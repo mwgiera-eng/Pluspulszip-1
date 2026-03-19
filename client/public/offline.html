@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ShiftOptima — Offline</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d1117;
+      color: #f0f6fc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem env(safe-area-inset-right, 1rem) calc(2rem + env(safe-area-inset-bottom, 0px)) env(safe-area-inset-left, 1rem);
+      text-align: center;
+      gap: 1.5rem;
+    }
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #22c55e;
+      letter-spacing: -0.03em;
+    }
+    .logo span { color: #f0f6fc; }
+    .icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: #1a2233;
+      border: 1px solid #2d3a4a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+    p {
+      font-size: 0.9rem;
+      color: #7d8fa3;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: #4a5568;
+      background: #1a2233;
+      border: 1px solid #2d3a4a;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      max-width: 280px;
+    }
+    button {
+      background: #22c55e;
+      color: #0a1a0a;
+      border: none;
+      border-radius: 10px;
+      padding: 0.75rem 2rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:active { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <div class="icon">
+    <img src="/icon-192.png" alt="" width="48" height="48" style="border-radius:10px;" onerror="this.parentElement.textContent='&#x1F697;'" />
+  </div>
+  <div class="logo">Shift<span>Optima</span></div>
+  <h1>You're offline</h1>
+  <p>No internet connection detected. Cached zone and route data may still be available.</p>
+  <div class="hint">Last loaded data is available — reconnect for live updates and recommendations.</div>
+  <button onclick="window.location.reload()">Try again</button>
+</body>
+</html>

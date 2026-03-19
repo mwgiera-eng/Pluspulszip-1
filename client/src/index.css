@@ -1,0 +1,155 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Dark mode default for driver app (Night driving optimized) */
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+
+  --card: 222 47% 13%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+
+  /* Brand Colors - premium dark-mode green palette */
+  --primary: 142 71% 45%; /* Green for "Go" / Money */
+  --primary-foreground: 144 100% 97%;
+
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+
+  --accent: 262 80% 50%; /* Deep purple for "Surge" / Premium */
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62% 30%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 142 71% 45%;
+
+  --radius: 0.75rem;
+
+  /* Custom Status Colors */
+  --status-surge: 262 80% 60%;
+  --status-high: 0 84% 60%;
+  --status-medium: 38 92% 50%;
+  --status-low: 142 71% 45%;
+}
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
+    font-family: var(--font-sans);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight font-semibold;
+  }
+}
+
+/* Map Customization */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background-color: hsl(var(--background));
+  z-index: 0;
+}
+
+/* Dark Map Tiles Filter */
+.leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+/* Remove Leaflet attribution prefix for cleaner look in app (keep copyright) */
+.leaflet-control-attribution a:first-child {
+  display: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted rounded-full hover:bg-muted-foreground/50 transition-colors;
+}
+
+/* Utility Animations */
+@keyframes pulse-ring {
+  0% { transform: scale(0.33); opacity: 1; }
+  80%, 100% { opacity: 0; }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes driver-pulse {
+  0% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.6); opacity: 0.08; }
+  100% { transform: scale(1); opacity: 0.4; }
+}
+.leaflet-driver-pulse {
+  transform-origin: center;
+  animation: driver-pulse 2s ease-in-out infinite;
+}
+
+@keyframes route-pulse {
+  0% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.8); opacity: 0.05; }
+  100% { transform: scale(1); opacity: 0.3; }
+}
+.leaflet-route-pulse {
+  transform-origin: center;
+  animation: route-pulse 3s ease-in-out infinite;
+}
+
+@keyframes route-dash {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -40; }
+}
+.leaflet-route-glow path {
+  animation: route-dash 2s linear infinite;
+}
+
+/* Mobile bottom nav clearance — prevent content hiding behind the fixed bar */
+@media (max-width: 767px) {
+  main, .main-scroll {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+.heat-score-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.5);
+}
+
+.heat-score-tooltip::before {
+  display: none !important;
+}
