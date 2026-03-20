@@ -13,7 +13,7 @@ import { getSubscriptionStatus, activateSubscription } from "./subscriptionServi
 import { registerTransaction, processBlikPayment, verifyWebhookSignature, verifyTransaction, isSandboxMode, type PaymentMethod } from "./przelewy24Service";
 import { getPopularRoutes } from "./popularRoutes";
 import { fetchMultipleRouteGeometries } from "./osrmService";
-import { startEventsRefreshLoop, getActiveEvents, refreshEvents, getEventsCacheMeta } from "./krakowEvents";
+import { startEventsRefreshLoop, getActiveEvents, refreshEvents, getEventsCacheMeta, getAllCachedEvents } from "./krakowEvents";
 import { generateDayPlan } from "./dayPlanner";
 import { clearAirportCache, getAirportCacheMeta, getKrakowAirportFlights } from "./krakowAirportScraper";
 import multer from "multer";
@@ -620,6 +620,45 @@ export async function registerRoutes(
       surgeMultiplier: e.event.surgeMultiplier,
       source: e.event.source,
     })));
+  });
+
+  // === Krakow Events (Unified Schema) ===
+  app.get("/api/krakow-events", (_req, res) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    const events = getAllCachedEvents();
+    const meta = getEventsCacheMeta();
+    res.json({
+      events: events.map(e => ({
+        id: e.id,
+        name: e.title,
+        category: e.category,
+        venue_name: e.venueName,
+        expected_attendance: null,
+        source: e.source,
+        start_time: e.startDate.toISOString(),
+        end_time: e.endDate?.toISOString() ?? null,
+      })),
+      last_refresh: meta.lastFetchedAt,
+    });
+  });
+
+  app.post("/api/krakow-events/refresh", async (_req, res) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    try {
+      const beforeCount = getAllCachedEvents().length;
+      await refreshEvents();
+      const afterCount = getAllCachedEvents().length;
+      const meta = getEventsCacheMeta();
+      res.json({
+        refreshed: afterCount,
+        delta: afterCount - beforeCount,
+        last_refresh: meta.lastFetchedAt,
+        failed: meta.lastFetchFailed,
+      });
+    } catch (err) {
+      console.error("[Krakow Events Refresh]", err);
+      res.status(500).json({ error: "Refresh failed", message: String(err) });
+    }
   });
 
   // === Integral Intelligence API (multi-source + confidence) ===

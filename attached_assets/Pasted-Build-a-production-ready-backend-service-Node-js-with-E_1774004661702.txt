@@ -1,0 +1,115 @@
+Build a production-ready backend service (Node.js with Express or Python with FastAPI) designed to aggregate and serve real-time Krakow event data optimized for detecting large taxi-demand spikes.
+
+CORE REQUIREMENTS:
+- All external API calls MUST be server-side (no frontend fetching).
+- Prevent caching issues completely:
+  - Set headers: Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+  - Disable any framework-level caching
+  - Always fetch fresh data from APIs
+- System must be resilient to API rate limits and partial failures.
+
+DATA SOURCES TO INTEGRATE:
+1. Ticketmaster Discovery API
+   Endpoint:
+   https://app.ticketmaster.com/discovery/v2/events.json?city=Krakow&countryCode=PL&apikey=YOUR_KEY
+
+2. PredictHQ API
+   Endpoint:
+   https://api.predicthq.com/v1/events/?within=20km@50.0646,19.9450
+   Header:
+   Authorization: Bearer YOUR_KEY
+
+3. SportMonks (or API-Football)
+   Example:
+   https://soccer.sportmonks.com/api/v2.0/fixtures?api_token=YOUR_KEY
+
+4. Facebook Graph Events API
+   Example:
+   https://graph.facebook.com/v17.0/search?type=event&center=50.0646,19.9450&distance=10000&access_token=YOUR_TOKEN
+
+5. Meetup API
+   Example:
+   https://api.meetup.com/find/upcoming_events?lat=50.0646&lon=19.9450&radius=10
+
+UNIFIED DATA SCHEMA:
+Normalize all sources into this structure:
+{
+  id: string,
+  name: string,
+  category: string,
+  venue_name: string,
+  latitude: number,
+  longitude: number,
+  start_time: datetime,
+  end_time: datetime,
+  expected_attendance: number | null,
+  source: string
+}
+
+ATTENDANCE LOGIC:
+- Use direct fields if available (PredictHQ: venue_capacity / attendance)
+- Otherwise estimate using:
+  - venue capacity lookup (static mapping for major Krakow venues)
+  - Facebook attending_count / interested_count
+  - Meetup yes_rsvp_count
+- Add computed field: demand_score (0–100) based on:
+  - attendance
+  - event category (sports/concerts higher weight)
+  - time proximity
+
+PAGINATION + RATE LIMIT HANDLING:
+- Implement pagination loops for each API (Ticketmaster page/size, PredictHQ limit/offset)
+- Add retry with exponential backoff
+- Add per-source throttling
+- Fail gracefully if one source is unavailable
+
+DATABASE:
+- Use PostgreSQL
+- Table: events
+- Primary key: (id, source)
+- Implement UPSERT (ON CONFLICT DO UPDATE)
+- Store last_updated timestamp
+- Index on start_time, location, demand_score
+
+REFRESH STRATEGY:
+- Implement background job (cron or scheduler)
+- Run every 15 minutes
+- Fetch → normalize → upsert
+- Do NOT rely on request-time fetching
+
+API ENDPOINT:
+Create:
+GET /api/krakow-events
+
+Behavior:
+- Return merged events from database
+- Filter:
+  - upcoming events only (start_time > now)
+  - optional query params:
+    - min_demand_score
+    - radius (lat/lon)
+- Sort by demand_score DESC
+
+RESPONSE FORMAT:
+{
+  events: [...],
+  last_refresh: timestamp
+}
+
+ANTI-CACHING (CRITICAL):
+- Every response must include:
+  Cache-Control: no-store
+- Ensure frontend cannot cache stale data
+
+PROJECT STRUCTURE:
+- /services (API integrations)
+- /normalizers (per-source mapping)
+- /db (PostgreSQL logic)
+- /jobs (cron refresh)
+- /routes (API endpoints)
+
+OPTIONAL:
+- Add Redis only if used for rate-limit buffering (NOT for caching responses)
+
+GOAL:
+System must always serve fresh, normalized, near real-time Krakow event data optimized for identifying high taxi-demand spikes.
