@@ -377,13 +377,12 @@ export async function registerRoutes(
       const { handlePayPalWebhook } = await import("./paypalWebhook");
       const result = await handlePayPalWebhook(
         req.body,
-        req.headers,
-        JSON.stringify(req.body)
+        req.headers
       );
       res.status(result.success ? 200 : 400).json(result);
     } catch (err: any) {
       console.error("[PayPal Webhook] Error:", err);
-      res.status(400).json({ success: false, message: err.message });
+      res.status(400).json({ success: false, message: "Webhook processing failed" });
     }
   });
 
