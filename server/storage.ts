@@ -306,6 +306,7 @@ export class DatabaseStorage implements IStorage {
 
 
 // If DB is disabled, export a safe Noop storage implementation so the app can start
+export let storage: IStorage;
 if (!DB_ENABLED) {
   class NoopStorage implements IStorage {
     // Zones
@@ -365,7 +366,6 @@ if (!DB_ENABLED) {
     async markInsightSeen(_id: number) { throw new Error('DB not enabled'); }
   }
 
-  export let storage: IStorage;
   storage = new NoopStorage();
 } else {
   storage = new DatabaseStorage();
