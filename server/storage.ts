@@ -365,8 +365,9 @@ if (!DB_ENABLED) {
     async markInsightSeen(_id: number) { throw new Error('DB not enabled'); }
   }
 
-  export const storage: IStorage = new NoopStorage();
+  export let storage: IStorage;
+  storage = new NoopStorage();
 } else {
-  export const storage = new DatabaseStorage();
+  storage = new DatabaseStorage();
 }
 
