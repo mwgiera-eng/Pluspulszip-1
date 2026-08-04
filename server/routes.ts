@@ -5,9 +5,7 @@ import { api } from "@shared/routes";
 import { insertZoneSchema, insertEarningSchema, insertPoiSchema } from "@shared/schema";
 import type { InsertEarning } from "@shared/schema";
 import { z } from "zod";
-import { setupAuth, isAuthenticated } from "./replit_integrations/auth";
-import { registerAuthRoutes } from "./replit_integrations/auth";
-import { authStorage } from "./replit_integrations/auth/storage";
+import { setupAuth, isAuthenticated, registerAuthRoutes, authStorage } from "./auth";
 import { generateRecommendations, getArrivalsWindowEstimate, generateLocationAwareAdvice, getZoneProfitHeat } from "./recommendationEngine";
 import { getSubscriptionStatus, activateSubscription } from "./subscriptionService";
 import { registerTransaction, processBlikPayment, verifyWebhookSignature, verifyTransaction, isSandboxMode, type PaymentMethod } from "./przelewy24Service";
@@ -21,7 +19,7 @@ import { parse } from "csv-parse/sync";
 
 const requirePremium: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
-  if (!req.isAuthenticated() || !user?.claims?.sub) {
+  if (!(typeof req.isAuthenticated === 'function' && req.isAuthenticated()) || !user?.claims?.sub) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   const dbUser = await authStorage.getUser(user.claims.sub);
@@ -37,7 +35,7 @@ const requirePremium: RequestHandler = async (req, res, next) => {
 
 const isAdmin: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
-  if (!req.isAuthenticated() || !user?.claims?.sub) {
+  if (!(typeof req.isAuthenticated === 'function' && req.isAuthenticated()) || !user?.claims?.sub) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   const dbUser = await authStorage.getUser(user.claims.sub);
@@ -133,7 +131,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/users/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = await authStorage.updateUserStatus(req.params.id, "approved");
+      const user = await authStorage.updateUserStatus(String(req.params.id), "approved");
       res.json(user);
     } catch (err) {
       res.status(500).json({ message: "Failed to approve user" });
@@ -142,7 +140,7 @@ export async function registerRoutes(
 
   app.post("/api/admin/users/:id/reject", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = await authStorage.updateUserStatus(req.params.id, "rejected");
+      const user = await authStorage.updateUserStatus(String(req.params.id), "rejected");
       res.json(user);
     } catch (err) {
       res.status(500).json({ message: "Failed to reject user" });
@@ -182,7 +180,7 @@ export async function registerRoutes(
         const lng = parseFloat(u.lastSeenLng);
         let minDist = Infinity;
         for (const zone of allZones) {
-          const d = haversine(lat, lng, zone.lat, zone.lng);
+                  const d = haversine(lat, lng, Number(zone.lat), Number(zone.lng));
           if (d < minDist) { minDist = d; nearestZone = zone.name; }
         }
         if (minDist > 5) nearestZone = "Outside Kraków";
@@ -904,8 +902,12 @@ export async function registerRoutes(
 
   startEventsRefreshLoop();
 
-  // Seed Data
-  await seedDatabase();
+  // Seed Data (skip when no DATABASE_URL)
+  if (process.env.DATABASE_URL) {
+    await seedDatabase();
+  } else {
+    console.warn('Skipping DB seed: DATABASE_URL not set');
+  }
 
   return httpServer;
 }

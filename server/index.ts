@@ -22,6 +22,11 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// Lightweight health endpoint for readiness checks
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', pid: process.pid, uptime: process.uptime() });
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -94,7 +99,6 @@ app.use((req, res, next) => {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
       log(`serving on port ${port}`);

@@ -55,7 +55,14 @@ let lastFetchFailed = false;
 const EVENTS_CACHE_TTL = 6 * 60 * 60 * 1000;
 const EVENTS_RETRY_TTL = 30 * 60 * 1000;
 
+const ENABLE_EXTERNAL_SIGNALS = process.env.ENABLE_EXTERNAL_SIGNALS === "true";
+
 async function fetchKrakowTravelEvents(): Promise<KrakowEvent[]> {
+  if (!ENABLE_EXTERNAL_SIGNALS) {
+    console.log("[KrakowEvents] External signals disabled (ENABLE_EXTERNAL_SIGNALS != 'true'). Skipping fetch.");
+    return [];
+  }
+
   try {
     const url = "https://www.krakow.travel/en/wydarzenia";
     const controller = new AbortController();
