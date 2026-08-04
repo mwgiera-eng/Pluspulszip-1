@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, DB_ENABLED } from "./db";
 import {
   zones, earnings, pois, recommendations, notificationPreferences, payments,
   shiftSessions, copilotRecommendations, recommendationOutcomes, replayEvents, driverInsights,
@@ -304,4 +304,69 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+
+// If DB is disabled, export a safe Noop storage implementation so the app can start
+if (!DB_ENABLED) {
+  class NoopStorage implements IStorage {
+    // Zones
+    async getZones() { return []; }
+    async getZone(_id: number) { return undefined; }
+    async createZone(_zone: InsertZone) { throw new Error('DB not enabled'); }
+    async updateZone(_id: number, _updates: Partial<InsertZone>) { throw new Error('DB not enabled'); }
+    async deleteZone(_id: number) { /* no-op */ }
+
+    // Earnings
+    async getEarnings(_userId: string) { return []; }
+    async createEarning(_earning: InsertEarning) { throw new Error('DB not enabled'); }
+    async getEarningsStats(_userId: string) { return { totalEarnings: 0, totalTrips: 0, averagePerTrip: 0 }; }
+
+    // POIs
+    async getPois() { return []; }
+    async createPoi(_poi: InsertPoi) { throw new Error('DB not enabled'); }
+
+    // Recommendations
+    async getRecommendations() { return []; }
+    async createRecommendation(_recommendation: InsertRecommendation) { throw new Error('DB not enabled'); }
+    async clearRecommendations() { /* no-op */ }
+
+    // Notification Preferences
+    async getNotificationPreferences(_userId: string) { return undefined; }
+    async upsertNotificationPreferences(userId: string, prefs: Partial<InsertNotificationPreference>) { return { userId, airportInfo: true, events: true, hotZones: true, relocate: true, bestEarnings: true, frequency: 'hourly' } as any; }
+
+    // Payments
+    async getPayments(_userId: string) { return []; }
+    async createPayment(_payment: InsertPayment) { throw new Error('DB not enabled'); }
+    async updatePaymentStatus(_id: number, _status: string) { throw new Error('DB not enabled'); }
+    async getPaymentBySessionId(_sessionId: string) { return undefined; }
+    async getPaymentByToken(_token: string) { return undefined; }
+
+    // Shift Sessions
+    async createShiftSession(_session: InsertShiftSession) { throw new Error('DB not enabled'); }
+    async getActiveShiftSession(_userId: string) { return undefined; }
+    async updateShiftSession(_id: number, _updates: Partial<InsertShiftSession>) { throw new Error('DB not enabled'); }
+    async endShiftSession(_id: number) { throw new Error('DB not enabled'); }
+    async getRecentShiftSessions(_userId: string, _limit: number) { return []; }
+
+    // Copilot Recommendations
+    async createCopilotRecommendation(_rec: InsertCopilotRecommendation) { throw new Error('DB not enabled'); }
+    async getRecentCopilotRecommendations(_userId: string, _limit: number) { return []; }
+
+    // Recommendation Outcomes
+    async createRecommendationOutcome(_outcome: InsertRecommendationOutcome) { throw new Error('DB not enabled'); }
+    async getRecommendationOutcomes(_userId: string, _limit: number) { return []; }
+
+    // Replay Events
+    async createReplayEvent(_event: InsertReplayEvent) { throw new Error('DB not enabled'); }
+    async getReplayEvents(_shiftSessionId: number) { return []; }
+
+    // Driver Insights
+    async createDriverInsight(_insight: InsertDriverInsight) { throw new Error('DB not enabled'); }
+    async getDriverInsights(_userId: string) { return []; }
+    async markInsightSeen(_id: number) { throw new Error('DB not enabled'); }
+  }
+
+  export const storage: IStorage = new NoopStorage();
+} else {
+  export const storage = new DatabaseStorage();
+}
+

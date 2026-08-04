@@ -6,8 +6,9 @@ const { Pool } = pg;
 
 export let pool: any = null;
 export let db: any = null;
+export const DB_ENABLED = Boolean(process.env.DATABASE_URL);
 
-if (!process.env.DATABASE_URL) {
+if (!DB_ENABLED) {
   // During local dev in ephemeral environments (or CI without a DB), allow the app to start
   // but export a stubbed `db` object so imports don't throw. Database-backed features will
   // throw at runtime if invoked. For production deploys, ensure DATABASE_URL is set.
