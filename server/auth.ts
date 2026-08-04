@@ -1,48 +1,37 @@
 import type { Express, RequestHandler } from "express";
 import { authStorage } from "./authStorage";
 
-// Minimal GCP-friendly auth shim.
-// - setupAuth: no-op (session-based Replit OIDC removed)
-// - isAuthenticated: checks X-User-Id header or Authorization: Bearer <userId>
-// - registerAuthRoutes: no-op placeholder
-
+/**
+ * Authentication is intentionally fail-closed until a production identity
+ * provider is configured.
+ *
+ * Never trust X-User-Id or an unverified bearer value: both are controlled by
+ * the caller and allow account impersonation.
+ */
 export async function setupAuth(_app: Express) {
-  // No session or Replit-specific setup here. Trust proxy for GCP if necessary.
+  // Install verified session/JWT middleware here before enabling protected routes.
 }
 
-export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // If an existing session middleware is present and authenticated, allow through
+export const isAuthenticated: RequestHandler = (req, res, next) => {
   try {
-    // Prefer existing passport/session style if available
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    if (typeof req.isAuthenticated === "function" && (req as any).isAuthenticated()) {
-      return next();
+    if (typeof req.isAuthenticated === "function" && req.isAuthenticated()) {
+      const user = req.user as any;
+      if (user?.claims?.sub) {
+        return next();
+      }
     }
-  } catch (e) {
-    // ignore
+  } catch {
+    // Authentication failures must fall through to the fail-closed response.
   }
 
-  const authHeader = (req.headers["authorization"] as string) || (req.headers["x-user-id"] as string);
-  if (!authHeader) return res.status(401).json({ message: "Unauthorized" });
-
-  let userId = authHeader;
-  if (authHeader.toLowerCase().startsWith("bearer ")) {
-    userId = authHeader.slice(7).trim();
-  }
-
-  if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-  const user = await authStorage.getUser(userId);
-  if (!user) return res.status(404).json({ message: "User not found" });
-
-  // attach a minimal user.claims object expected by existing code
-  (req as any).user = { claims: { sub: user.id }, ...user };
-  return next();
+  return res.status(503).json({
+    message: "Authentication is not configured",
+    code: "AUTH_NOT_CONFIGURED",
+  });
 };
 
 export function registerAuthRoutes(_app: Express) {
-  // No login/logout endpoints provided here. Use GCP IAM / proxy-based auth or implement OIDC separately.
+  // Login/logout routes must only be registered with verified production auth.
 }
 
 export { authStorage };
