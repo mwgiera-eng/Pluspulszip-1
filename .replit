@@ -38,21 +38,5 @@ task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
 
-[agent]
-integrations = ["javascript_log_in_with_replit:2.0.0"]
-expertMode = true
-
-[objectStorage]
-defaultBucketID = "replit-objstore-936f681b-60ce-4ebf-b583-84c1f018c507"
-
-[userenv]
-
-[userenv.shared]
-TWILIO_ACCOUNT_SID = "512802164"
-WILIO_AUTH_TOKEN = ""
-
-[userenv.development]
-ADMIN_USER_ID = "512802164"
-
-[userenv.production]
-ADMIN_USER_ID = "512802164"
+# Replit-specific agent integrations and userenv removed for GCP deployment.
+# Keep .replit minimal; do NOT store secrets here. Use cloud secret manager instead.

@@ -1,6 +1,7 @@
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { LayoutDashboard, Map as MapIcon, Wallet, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SafeLink } from "@/lib/SafeLink";
 
 const BOTTOM_NAV_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
@@ -21,7 +22,7 @@ export function BottomNav() {
       {BOTTOM_NAV_ITEMS.map((item) => {
         const isActive = location === item.href;
         return (
-          <Link key={item.href} href={item.href} className="flex-1">
+          <SafeLink key={item.href} href={item.href} className="flex-1">
             <div
               className={cn(
                 "flex flex-col items-center justify-center gap-1 py-2.5 transition-colors",
@@ -34,7 +35,7 @@ export function BottomNav() {
               />
               <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </div>
-          </Link>
+          </SafeLink>
         );
       })}
     </nav>
