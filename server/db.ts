@@ -4,6 +4,9 @@ import * as schema from "@shared/schema";
 
 const { Pool } = pg;
 
+export let pool: any = null;
+export let db: any = null;
+
 if (!process.env.DATABASE_URL) {
   // During local dev in ephemeral environments (or CI without a DB), allow the app to start
   // but export a stubbed `db` object so imports don't throw. Database-backed features will
@@ -18,9 +21,9 @@ if (!process.env.DATABASE_URL) {
     }
   });
 
-  export const pool: any = null;
-  export const db: any = dbStub;
+  pool = null;
+  db = dbStub;
 } else {
-  export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  export const db = drizzle(pool, { schema });
+  pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  db = drizzle(pool, { schema });
 }
