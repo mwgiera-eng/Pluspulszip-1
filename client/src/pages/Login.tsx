@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Map, ShieldCheck, Zap, Users } from "lucide-react";
+import { ShieldCheck, Zap, Users, MapPin } from "lucide-react";
 
 export default function Login() {
   const handleLogin = () => {
@@ -14,16 +14,22 @@ export default function Login() {
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[150px]" />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="p-2 bg-primary rounded-lg">
-              <Map className="w-6 h-6 text-primary-foreground" />
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/40">
+              <svg viewBox="0 0 20 20" fill="none" className="w-5 h-5">
+                <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+                <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="white"/>
+                <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="white" fillOpacity="0.9"/>
+                <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="white"/>
+                <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+              </svg>
             </div>
-            <h1 className="text-2xl font-bold font-mono">+Puls</h1>
+            <h1 className="text-2xl font-bold">+Puls</h1>
           </div>
 
           <h2 className="text-5xl font-bold leading-tight tracking-tight mb-6">
-            Jedź mądrzej,<br />
-            <span className="text-primary">zarabiaj więcej.</span>
+            See demand<br />
+            <span className="text-primary">before it happens.</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-md leading-relaxed">
             Analityka popytu w czasie rzeczywistym i inteligentne pozycjonowanie dla kierowców ride-hailing w Polsce.
@@ -54,7 +60,7 @@ export default function Login() {
           </div>
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
-              <Map className="w-5 h-5 text-violet-400" />
+              <MapPin className="w-5 h-5 text-violet-400" />
             </div>
             <h3 className="font-semibold text-lg">Mapa na żywo</h3>
             <p className="text-sm text-muted-foreground">Strefy, heat-mapy i trasy w czasie rzeczywistym dla Krakowa.</p>
@@ -72,11 +78,17 @@ export default function Login() {
 
         <div className="w-full max-w-md relative z-10 space-y-8">
           <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2 mb-4 lg:hidden">
-              <div className="p-2 bg-primary rounded-lg">
-                <Map className="w-5 h-5 text-primary-foreground" />
+            <div className="flex items-center justify-center gap-2.5 mb-4 lg:hidden">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4">
+                  <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+                  <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="white"/>
+                  <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="white" fillOpacity="0.9"/>
+                  <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="white"/>
+                  <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+                </svg>
               </div>
-              <span className="text-xl font-bold font-mono">+Puls</span>
+              <span className="text-xl font-bold">+Puls</span>
             </div>
             <h3 className="text-2xl font-bold">Dołącz do PlusPuls</h3>
             <p className="text-muted-foreground text-sm">

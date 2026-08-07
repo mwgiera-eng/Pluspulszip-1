@@ -27,10 +27,22 @@ export function Sidebar() {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border/10">
-        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-400">
-          +Puls
-        </h1>
-        <p className="text-xs text-muted-foreground mt-1">Driver Intelligence</p>
+        <div className="flex items-center gap-2.5">
+          {/* Waveform / pulse logo icon */}
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
+            <svg viewBox="0 0 20 20" fill="none" className="w-4.5 h-4.5">
+              <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+              <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="white"/>
+              <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="white" fillOpacity="0.9"/>
+              <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="white"/>
+              <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-400">
+            +Puls
+          </h1>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1 pl-0.5">Driver Intelligence</p>
         {subscriptionInfo && !isPremium && subscriptionInfo.status === "trial" && subscriptionInfo.trialDaysLeft !== null && (
           <Badge variant="outline" className="mt-2 text-xs border-amber-500/30 text-amber-400" data-testid="badge-trial">
             <Clock className="w-3 h-3 mr-1" /> Trial: {subscriptionInfo.trialDaysLeft}d left

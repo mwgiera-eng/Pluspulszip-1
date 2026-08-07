@@ -1,0 +1,851 @@
+Generated imageModify
+
+Generated imageModify
+
+Generated imageModify
+
+Generated imageModify
+
+Generated imageModify
+
+Generated imageModify
+
+Generated imageModify
+
+Let me first study all your screenshots in detail to understand the complete design language.
+
+Let me now generate high-detail visualization mockups and provide comprehensive Android-native library recommendations.
+
+Now let me provide the comprehensive Android-native library recommendations.
+
+📱 Android Native Library Stack
+Complete build.gradle.kts Dependencies
+// app/build.gradle.kts
+
+dependencies {
+
+    // ============================================================
+    // CORE ANDROIDX
+    // ============================================================
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.activity:activity-compose:1.9.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
+
+    // ============================================================
+    // JETPACK COMPOSE (Modern Android UI Toolkit)
+    // ============================================================
+    implementation(platform("androidx.compose:compose-bom:2024.08.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.animation:animation")
+    implementation("androidx.compose.animation:animation-graphics")
+
+    // ============================================================
+    // NAVIGATION
+    // ============================================================
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // ============================================================
+    // MAPS & GEOGRAPHIC VISUALIZATION
+    // ============================================================
+    
+    // Mapbox Maps SDK v11 (Primary map engine — hexbin, custom styles)
+    implementation("com.mapbox.maps:android:11.6.0")
+    
+    // Mapbox Compose extension (declarative map composable)
+    implementation("com.mapbox.extension:maps-compose:11.6.0")
+    
+    // Mapbox Turf (geospatial calculations, distance, bearing)
+    implementation("com.mapbox.mapboxsdk:mapbox-sdk-turf:6.15.0")
+    
+    // Google Maps Compose (fallback / secondary map option)
+    implementation("com.google.maps.android:maps-compose:4.3.3")
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
+    
+    // OSRM Retrofit client for route geometry
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
+
+    // ============================================================
+    // CHARTS & DATA VISUALIZATION
+    // ============================================================
+
+    // Vico Chart Engine (Compose-native charts, animated)
+    implementation("com.patrykandpatrick.vico:compose-m3:2.0.0-alpha.28")
+    implementation("com.patrykandpatrick.vico:compose:2.0.0-alpha.28")
+    implementation("com.patrykandpatrick.vico:core:2.0.0-alpha.28")
+    
+    // YCharts (Kotlin chart library — bar, line, pie, donut)
+    implementation("co.yml:ycharts:2.1.0")
+
+    // ============================================================
+    // WEBSOCKET & REAL-TIME COMMUNICATION
+    // ============================================================
+    
+    // OkHttp WebSocket (reliable, production-tested)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // Socket.IO Kotlin Client (if matching server impl)
+    implementation("io.socket:socket.io-client:2.1.0")
+    
+    // Kotlin Coroutines (async WebSocket handling)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    // ============================================================
+    // NETWORKING & API
+    // ============================================================
+
+    // Ktor Client (Kotlin multiplatform HTTP)
+    implementation("io.ktor:ktor-client-android:2.3.12")
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
+    implementation("io.ktor:ktor-client-websockets:2.3.12")
+    
+    // Moshi (JSON parsing — lighter than Gson)
+    implementation("com.squareup.moshi:moshi:1.15.1")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
+    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
+
+    // ============================================================
+    // DEPENDENCY INJECTION
+    // ============================================================
+    implementation("com.google.dagger:hilt-android:2.52")
+    kapt("com.google.dagger:hilt-compiler:2.52")
+
+    // ============================================================
+    // LOCAL STORAGE & DATABASE
+    // ============================================================
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+    
+    // DataStore Preferences (replaces SharedPreferences)
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // ============================================================
+    // LOCATION SERVICES
+    // ============================================================
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    
+    // Fused Location Provider (battery-efficient GPS tracking)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    // ============================================================
+    // BACKGROUND WORK & SCHEDULING
+    // ============================================================
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    kapt("androidx.hilt:hilt-compiler:1.2.0")
+
+    // ============================================================
+    // PUSH NOTIFICATIONS
+    // ============================================================
+    implementation("com.google.firebase:firebase-messaging:24.0.0")
+    implementation("androidx.core:core:1.13.1") // Notification channels
+
+    // ============================================================
+    // HAPTICS & VIBRATION FEEDBACK
+    // ============================================================
+    // Built into androidx.core — VibratorManager API
+    // Use View.performHapticFeedback(HapticFeedbackConstants.*)
+
+    // ============================================================
+    // SECURITY & ENCRYPTION
+    // ============================================================
+    
+    // Jetpack Security (encrypted preferences at rest)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    
+    // EncryptedSharedPreferences
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    
+    // App Authentication / Biometric
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
+    // ============================================================
+    // ANIMATION & LOTTIE
+    // ============================================================
+    implementation("com.airbnb.android:lottie-compose:6.5.1")
+
+    // ============================================================
+    // IMAGE LOADING
+    // ============================================================
+    implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // ============================================================
+    // SHIMMER / SKELETON LOADING
+    // ============================================================
+    implementation("com.valentinilk.shimmer:compose-shimmer:1.3.1")
+
+    // ============================================================
+    // PERMISSIONS HANDLING
+    // ============================================================
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+
+    // ============================================================
+    // PWA / WEBVIEW (for payment gateway redirects)
+    // ============================================================
+    implementation("androidx.webkit:webkit:1.11.0")
+
+    // ============================================================
+    // TESTING
+    // ============================================================
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.13.12")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.08.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+}
+
+🏗️ Android Project Structure
+pluspuls-android/
+├── app/
+│   ├── build.gradle.kts
+│   └── src/
+│       ├── main/
+│       │   ├── java/com/pluspuls/
+│       │   │   ├── PlusPulsApp.kt                    # Application class
+│       │   │   ├── MainActivity.kt                  # Single activity host
+│       │   │   │
+│       │   │   ├── core/
+│       │   │   │   ├── di/                           # Hilt modules
+│       │   │   │   │   ├── AppModule.kt
+│       │   │   │   │   ├── NetworkModule.kt
+│       │   │   │   │   ├── DatabaseModule.kt
+│       │   │   │   │   └── MapModule.kt
+│       │   │   │   ├── constants/
+│       │   │   │   │   ├── ApiEndpoints.kt
+│       │   │   │   │   └── KrakowZones.kt
+│       │   │   │   └── utils/
+│       │   │   │       ├── GeoUtils.kt              # Haversine, bearing
+│       │   │   │       ├── TimeUtils.kt
+│       │   │   │       ├── HapticUtils.kt           # Vibration patterns
+│       │   │   │       └── ColorUtils.kt            # Heat color interpolation
+│       │   │   │
+│       │   │   ├── data/
+│       │   │   │   ├── remote/
+│       │   │   │   │   ├── api/
+│       │   │   │   │   │   ├── DemandApi.kt         # Ktor/Retrofit interfaces
+│       │   │   │   │   │   ├── AuthApi.kt
+│       │   │   │   │   │   └── EarningsApi.kt
+│       │   │   │   │   ├── websocket/
+│       │   │   │   │   │   ├── WebSocketClient.kt   # OkHttp WS manager
+│       │   │   │   │   │   └── WebSocketEvent.kt    # Sealed class events
+│       │   │   │   │   └── dto/
+│       │   │   │   │       ├── DemandPulseDto.kt
+│       │   │   │   │       ├── RecommendationDto.kt
+│       │   │   │   │       └── ZoneHeatDto.kt
+│       │   │   │   ├── local/
+│       │   │   │   │   ├── db/
+│       │   │   │   │   │   ├── PlusPulsDatabase.kt  # Room database
+│       │   │   │   │   │   ├── dao/
+│       │   │   │   │   │   │   ├── DriverDao.kt
+│       │   │   │   │   │   │   ├── ShiftDao.kt
+│       │   │   │   │   │   │   └── EarningsDao.kt
+│       │   │   │   │   │   └── entity/
+│       │   │   │   │   │       ├── DriverEntity.kt
+│       │   │   │   │   │       ├── ShiftEntity.kt
+│       │   │   │   │   │       └── EarningsEntity.kt
+│       │   │   │   │   └── prefs/
+│       │   │   │   │       ├── UserPreferences.kt   # EncryptedDataStore
+│       │   │   │   │       └── ThemePreferences.kt
+│       │   │   │   ├── repository/
+│       │   │   │   │   ├── DemandRepository.kt
+│       │   │   │   │   ├── AuthRepository.kt
+│       │   │   │   │   ├── EarningsRepository.kt
+│       │   │   │   │   └── RecommendationRepository.kt
+│       │   │   │   └── location/
+│       │   │   │       └── LocationTracker.kt        # FusedLocationProvider wrapper
+│       │   │   │
+│       │   │   ├── domain/
+│       │   │   │   ├── model/
+│       │   │   │   │   ├── DemandPulse.kt
+│       │   │   │   │   ├── RoadSegmentHeat.kt
+│       │   │   │   │   ├── CopilotRecommendation.kt
+│       │   │   │   │   ├── MicroZone.kt
+│       │   │   │   │   └── DriverShift.kt
+│       │   │   │   ├── usecase/
+│       │   │   │   │   ├── GetRecommendationUseCase.kt
+│       │   │   │   │   ├── TrackLocationUseCase.kt
+│       │   │   │   │   ├── UploadEarningsUseCase.kt
+│       │   │   │   │   ├── CalculateRouteUseCase.kt
+│       │   │   │   │   └── SubscribeDemandUpdatesUseCase.kt
+│       │   │   │   └── engine/
+│       │   │   │       ├── RecommendationEngine.kt   # Core decision logic
+│       │   │   │       ├── DemandSignalProcessor.kt  # Signal aggregation
+│       │   │   │       └── ConfidenceCalculator.kt
+│       │   │   │
+│       │   │   ├── ui/
+│       │   │   │   ├── theme/
+│       │   │   │   │   ├── Color.kt                 # Dark palette definitions
+│       │   │   │   │   ├── Type.kt                  # Inter typography scale
+│       │   │   │   │   ├── Shape.kt                # Corner radius system
+│       │   │   │   │   └── Theme.kt                 # Material3 dark theme
+│       │   │   │   ├── navigation/
+│       │   │   │   │   ├── PlusPulsNavGraph.kt
+│       │   │   │   │   └── Routes.kt
+│       │   │   │   ├── components/
+│       │   │   │   │   ├── map/
+│       │   │   │   │   │   ├── MapboxMapComposable.kt  # Mapbox in Compose
+│       │   │   │   │   │   ├── HexbinHeatLayer.kt      # Hexagonal heatmap
+│       │   │   │   │   │   ├── PulseMarker.kt          # Animated pulse ring
+│       │   │   │   │   │   ├── POIPopupCard.kt          # Schindler-style card
+│       │   │   │   │   │   └── DriverLocationDot.kt     # Current position
+│       │   │   │   │   ├── controls/
+│       │   │   │   │   │   ├── TimeSliderBar.kt        # +30m/+60m/+90m slider
+│       │   │   │   │   │   ├── ZoomControls.kt
+│       │   │   │   │   │   └── CompassButton.kt
+│       │   │   │   │   ├── cards/
+│       │   │   │   │   │   ├── RecommendationCard.kt    # Next Move card
+│       │   │   │   │   │   ├── ZoneStatCard.kt          # Demand/Surge/Idle
+│       │   │   │   │   │   ├── SignalChipRow.kt         # Event/Weather tags
+│       │   │   │   │   │   └── EarningsHeroCard.kt      # Big revenue number
+│       │   │   │   │   ├── charts/
+│       │   │   │   │   │   ├── WeeklyBarChart.kt        # Earnings by day
+│       │   │   │   │   │   ├── HourlyTimelineStrip.kt   # 24h demand strip
+│       │   │   │   │   │   └── SparklineGraph.kt        # Mini trend lines
+│       │   │   │   │   ├── common/
+│       │   │   │   │   │   ├── StatusBadge.kt
+│       │   │   │   │   │   ├── ShimmerBox.kt            # Loading skeleton
+│       │   │   │   │   │   ├── ToastHost.kt             # Snackbar queue
+│       │   │   │   │   │   └── ProgressRing.kt
+│       │   │   │   │   └── gestures/
+│       │   │   │   │       └── MapGestureHandler.kt     # Pinch/pan/swipe/tap
+│       │   │   │   ├── screens/
+│       │   │   │   │   ├── map/
+│       │   │   │   │   │   ├── MapScreen.kt
+│       │   │   │   │   │   └── MapViewModel.kt
+│       │   │   │   │   ├── dashboard/
+│       │   │   │   │   │   ├── DashboardScreen.kt
+│       │   │   │   │   │   └── DashboardViewModel.kt
+│       │   │   │   │   ├── earnings/
+│       │   │   │   │   │   ├── EarningsScreen.kt
+│       │   │   │   │   │   └── EarningsViewModel.kt
+│       │   │   │   │   ├── planner/
+│       │   │   │   │   │   ├── PlannerScreen.kt
+│       │   │   │   │   │   └── PlannerViewModel.kt
+│       │   │   │   │   ├── subscription/
+│       │   │   │   │   │   ├── SubscriptionScreen.kt
+│       │   │   │   │   │   └── SubscriptionViewModel.kt
+│       │   │   │   │   ├── login/
+│       │   │   │   │   │   ├── LoginScreen.kt
+│       │   │   │   │   │   └── LoginViewModel.kt
+│       │   │   │   │   └── admin/
+│       │   │   │   │       ├── AdminScreen.kt
+│       │   │   │   │       └── AdminViewModel.kt
+│       │   │   │   └── effects/
+│       │   │   │       └── MapEffects.kt               # Reusable animations
+│       │   │   │
+│       │   │   └── worker/
+│       │   │       ├── LocationTrackingWorker.kt         # Foreground service GPS
+│       │   │       ├── DemandRefreshWorker.kt            # Periodic data sync
+│       │   │       └── EarningsSyncWorker.kt             # Background CSV upload
+│       │   │
+│       │   ├── res/
+│       │   │   ├── drawable/
+│       │   │   │   ├── ic_pulse_marker.xml               # Vector marker icon
+│       │   │   │   ├── ic_poi_pin.xml
+│       │   │   │   ├── ic_driver_location.xml
+│       │   │   │   └── ic_logo_pluspuls.xml
+│       │   │   ├── drawable/
+│       │   │   │   ├── gradient_earnings_hero.xml        # Green gradient bg
+│       │   │   │   ├── gradient_button_primary.xml
+│       │   │   │   └── gradient_card_glassmorphic.xml
+│       │   │   ├── raw/
+│       │   │   │   ├── lottie_pulse_animation.json       # Pulse ring effect
+│       │   │   │   ├── lottie_loading_map.json
+│       │   │   │   └── lottie_success_checkmark.json
+│       │   │   ├── values/
+│       │   │   │   ├── colors.xml                        # Full palette
+│       │   │   │   ├── strings.xml                       # All text content
+│       │   │   │   ├── dimens.xml                        # 8dp grid spacing
+│       │   │   │   ├── themes.xml                        # Material3 dark base
+│       │   │   │   └── type.xml                          # Inter font config
+│       │   │   ├── values-night/
+│       │   │   │   └── themes.xml                        # Force dark always
+│       │   │   ├── font/
+│       │   │   │   ├── inter_regular.ttf
+│       │   │   │   ├── inter_medium.ttf
+│       │   │   │   ├── inter_semibold.ttf
+│       │   │   │   ├── inter_bold.ttf
+│       │   │   │   └── inter_extrabold.ttf
+│       │   │   ├── mipmap/                               # App icons
+│       │   │   └── xml/
+│       │   │       ├── backup_rules.xml
+│       │   │       ├── data_extraction_rules.xml
+│       │   │       └── locales_config.xml                # PL/UK/EN config
+│       │   └── AndroidManifest.xml
+│       │
+│       ├── test/                                        # Unit tests
+│       │   └── java/com/pluspuls/
+│       │       ├── domain/engine/
+│       │       │   ├── RecommendationEngineTest.kt
+│       │       │   ├── ConfidenceCalculatorTest.kt
+│       │       │   └── DemandSignalProcessorTest.kt
+│       │       ├── data/repository/
+│       │       │   └── DemandRepositoryTest.kt
+│       │       └── core/utils/
+│       │           └── GeoUtilsTest.kt
+│       │
+│       └── androidTest/                                 # Instrumented tests
+│           └── java/com/pluspuls/
+│               ├── ui/screens/
+│               │   └── MapScreenTest.kt
+│               └── data/local/
+│                   └── PlusPulsDatabaseTest.kt
+│
+├── gradle/
+│   └── libs.versions.toml                              # Version catalog
+├── build.gradle.kts                                    # Root build file
+├── settings.gradle.kts
+└── proguard-rules.pro
+
+🎨 Design System Specification
+Color Palette (Pixel-Accurate)
+Token	Hex	Usage
+bg.base	#0d1b2a	App background
+bg.surface	#1e293b	Card backgrounds
+bg.overlay	rgba(30,41,59,0.95)	Floating panels
+primary.500	#10b981	Go / Money / Active
+primary.600	#059669	Button gradient end
+primary.700	#047857	Pressed states
+accent.500	#a855f7	Surge / Premium
+accent.600	#9333ea	Event signals
+warning.500	#f59e0b	Caution / Medium
+error.500	#ef4444	High risk / Danger
+info.500	#3b82f6	Transit / Info
+text.primary	#f8fafc	Main text
+text.secondary	#cbd5e1	Secondary text
+text.muted	#64748b	Labels / Timestamps
+border.subtle	#1e293b	Dividers
+border.default	#334155	Input borders
+heat.low	#dcfce7	Low demand zones
+heat.medium	#84cc16	Medium demand
+heat.high	#22c55e	High demand
+heat.surge	#dc2626	Surge pricing
+Typography Scale
+Style	Font	Weight	Size	Line Height	Letter Spacing	Usage
+Display	Inter	Bold (700)	40sp	48sp	-1.0%	Hero earnings number
+Headline	Inter	Bold (700)	32sp	40sp	-0.5%	Screen titles
+Title	Inter	SemiBold (600)	24sp	32sp	0%	Section headers
+Body Large	Inter	Regular (400)	18sp	24sp	0%	Recommendation text
+Body Medium	Inter	Medium (500)	16sp	22sp	0%	Card body text
+Body Small	Inter	Regular (400)	14sp	20sp	0%	Secondary info
+Label	Inter	Medium (500)	12sp	16sp	0.5%	Stats labels
+Caption	Inter	Regular (400)	10sp	14sp	1.0%	Timestamps
+Spacing System (8dp Grid)
+Token	Value	Usage
+space.xs	4dp	Icon padding, tight gaps
+space.sm	8dp	Chip padding, list item gaps
+space.md	16dp	Standard card padding
+space.lg	24dp	Section padding
+space.xl	32dp	Screen edge margins
+space.2xl	48dp	Major section breaks
+touch.target.min	48dp	Minimum touch target
+Corner Radius System
+Element	Radius
+Buttons	12dp
+Cards	16dp
+Bottom sheets	20dp top corners only
+Large hero cards	24dp
+Pills / Chips	Half height (fully rounded)
+Images / Avatars	50% (circle)
+Inputs	12dp
+Shadow / Elevation System
+Level	Y Offset	Blur	Spread	Color	Usage
+0	0dp	0dp	0dp	none	Flat elements
+1	1dp	3dp	0dp	#00000020	Chips, small buttons
+2	2dp	8dp	0dp	#00000030	Cards, popups
+3	4dp	16dp	0dp	#00000040	Floating panels
+4	8dp	24dp	0dp	#00000050	Modals, bottom sheets
+Glow	0dp	8dp	4dp	#10b98160	Active/highlight elements
+🔬 Animation Specifications
+Trigger	Animation	Duration	Easing	Property
+Screen entry	Slide up fade in	300ms	easeOutCubic	translateY 16dp→0, alpha 0→1
+Card tap	Scale down	100ms	easeInOut	scale 1.0→0.98
+Card release	Scale up bounce	200ms	bounceOut	scale 0.98→1.02→1.0
+Recommendation arrive	Slide in from right	350ms	easeOutBack	translateX 100%→0, alpha 0→1
+Pulse marker	Ring expand + fade	2000ms loop	linear	scale 0.5→2.0, alpha 0.8→0
+Heatmap update	Color transition	400ms	easeInOutQuad	fill-color interpolate
+Time slider drag	Hex opacity change	150ms	easeOut	opacity per-hex
+Tab switch	Crossfade	200ms	easeInOut	alpha swap
+Number count up	Increment	800ms	easeOutExpo	value 0→target
+Shimmer loading	Gradient sweep	1500ms loop	linear	translateX -100%→100%
+Toast appear	Slide down	250ms	easeOutQuart	translateY -32dp→0
+GPS dot pulse	Scale + opacity	1200ms loop	easeInOut	scale 1.0→1.3→1.0
+📊 Heatmap Rendering Strategy (Android Native)
+Approach: Mapbox GL + Custom GeoJSON Source
+// HexbinHeatLayer.kt — Core heatmap rendering using Mapbox Style API
+
+class HexbinHeatLayer(
+    private val mapView: MapView,
+    private val styleId: String = "pluspuls-dark-v1"
+) {
+    private var geoJsonSource: GeoJsonSource? = null
+    
+    companion object {
+        const val SOURCE_ID = "demand-hex-source"
+        const val LAYER_ID = "demand-hex-layer"
+        const val LAYER_OUTLINE_ID = "demand-hex-outline"
+        
+        // Kraków center point for hex grid generation
+        val KRAKOW_CENTER = Point.fromLngLat(19.9450, 50.0647)
+        const val HEX_RADIUS_METERS = 300.0  // ~300m hexagons
+        const val GRID_ROWS = 15
+        const val GRID_COLS = 12
+    }
+
+    /**
+     * Generate hexagonal grid covering Kraków city area.
+     * Uses offset coordinate system for honeycomb tessellation.
+     */
+    fun generateHexGrid(
+        demandData: List<ZoneDemand>
+    ): FeatureCollection {
+        val features = mutableListOf<Feature>()
+        
+        for (row in 0 until GRID_ROWS) {
+            for (col in 0 until GRID_COLS) {
+                // Offset coordinates for honeycomb pattern
+                val offsetX = if (row % 2 == 0) 0.0 else HEX_RADIUS_METERS * 1.5
+                val centerLng = KRAKOW_CENTER.longitude() + 
+                    (col * HEX_RADIUS_METERS * 3 + offsetX) / 111320.0
+                val centerLat = KRAKOW_CENTER.latitude() + 
+                    (row * HEX_RADIUS_METERS * Math.sqrt(3.0)) / 110574.0
+                
+                // Find nearest demand zone for this hex
+                val nearestDemand = demandData.minByOrNull { demand ->
+                    haversineDistance(centerLat, centerLng, demand.lat, demand.lng)
+                } ?: continue
+                
+                // Create hex polygon vertices
+                val hexPolygon = createHexagonVertices(centerLng, centerLat, HEX_RADIUS_METERS)
+                
+                val feature = Feature.fromGeometry(Polygon.fromLngLats(listOf(hexPolygon)))
+                feature.addBooleanProperty("isHot", nearestDemand.score > 70)
+                feature.addNumberProperty("demandScore", nearestDemand.score)
+                feature.addNumberProperty("surgeMultiplier", nearestDemand.surge)
+                feature.addStringProperty("zoneName", nearestDemand.name)
+                feature.addNumberProperty("confidence", nearestDemand.confidence)
+                
+                features.add(feature)
+            }
+        }
+        
+        return FeatureCollection.fromFeatures(features)
+    }
+    
+    /**
+     * Apply the hex grid to Mapbox map as a styled fill layer
+     */
+    fun applyToMap(mapboxMap: MapboxMap) {
+        mapboxMap.getStyle { style ->
+            // Add GeoJSON source
+            geoJsonSource = GeoJsonSource(
+                Builder(SOURCE_ID, generateHexGrid(emptyList()))
+                    .maxzoom(16)
+                    .tolerance(0.375f)
+                    .buffer(64)
+            )
+            style.addSource(geoJsonSource!!)
+            
+            // Fill layer with interpolated colors based on demand score
+            val fillLayer = FillLayer(LAYER_ID, SOURCE_ID)
+                .withProperties(
+                    fillColor(
+                        interpolate(
+                            expression { literal("demandScore") },
+                            stop(0, rgba(220, 252, 231, 0.4)),   // #dcfce7 40%
+                            stop(35, rgba(132, 204, 22, 0.5)),     // #84cc16 50%
+                            stop(60, rgba(34, 197, 94, 0.6)),      // #22c55e 60%
+                            stop(80, rgba(21, 128, 61, 0.85)),     // #15803d 85%
+                            stop(95, rgba(220, 38, 38, 0.9))       // #dc2626 90%
+                        )
+                    ),
+                    fillOpacity(
+                        interpolate(
+                            expression { literal("confidence") },
+                            stop(0, 0.3),
+                            stop(0.5, 0.5),
+                            stop(1.0, 0.9)
+                        )
+                    )
+                )
+                .withFilter(ne(get("zoneName"), literal("")))
+            
+            // Outline layer for hex borders
+            val outlineLayer = LineLayer(LAYER_OUTLINE_ID, SOURCE_ID)
+                .withProperties(
+                    lineColor(rgba(30, 58, 47, 0.6)),  // #1e3a2f
+                    lineWidth(0.8f),
+                    lineOpacity(0.7f)
+                )
+            
+            style.addLayerBelow(fillLayer, "settlement-label")
+            style.addLayerBelow(outlineLayer, LAYER_ID)
+        }
+    }
+    
+    /**
+     * Update heat data without recreating layers
+     */
+    fun updateDemandData(demandData: List<ZoneDemand>) {
+        geoJsonSource?.featureCollection(generateHexGrid(demandData))
+    }
+    
+    /**
+     * Animate transition when time slider changes
+     */
+    fun animateTimeTransition(
+        newData: List<ZoneDemand>,
+        durationMs: Long = 400
+    ) {
+        // Mapbox handles property transitions automatically
+        // when source data updates — configure transition:
+        mapView.getMapboxMap().getStyle { style ->
+            style.transitionStyleOptions(
+                TransitionOptions.Builder()
+                    .duration(durationMs)
+                    .delay(0)
+                    .enablePlacementTransitions(true)
+                    .build()
+            )
+            geoJsonSource?.featureCollection(generateHexGrid(newData))
+        }
+    }
+    
+    private fun createHexagonVertices(
+        centerLng: Double,
+        centerLat: Double,
+        radiusMeters: Double
+    ): List<Point> {
+        val vertices = mutableListOf<Point>()
+        val latPerMeter = 1.0 / 110574.0
+        val lngPerMeter = 1.0 / (111320.0 * Math.cos(Math.toRadians(centerLat)))
+        
+        for (i in 0 until 6) {
+            val angle = Math.PI / 3.0 * i + Math.PI / 6.0
+            val dx = radiusMeters * Math.cos(angle) * lngPerMeter
+            val dy = radiusMeters * Math.sin(angle) * latPerMeter
+            vertices.add(Point.fromLngLat(centerLng + dx, centerLat + dy))
+        }
+        return vertices
+    }
+    
+    private fun haversineDistance(
+        lat1: Double, lng1: Double,
+        lat2: Double, lng2: Double
+    ): Double {
+        val R = 6371000.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = Math.sin(dLat / 2).pow(2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLng / 2).pow(2)
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    }
+}
+
+Data Model for Heat Zones
+// domain/model/ZoneDemand.kt
+
+data class ZoneDemand(
+    val id: String,
+    val name: String,
+    val lat: Double,
+    val lng: Double,
+    val score: Int,           // 0-100 demand intensity
+    val surge: Double,        // e.g., 1.8x multiplier
+    val confidence: Double,  // 0.0-1.0 signal reliability
+    val earningsPerMin: Double,
+    val idleRiskMinutes: Int,
+    val signals: List<SignalType>
+)
+
+enum class SignalType {
+    EVENT, TRANSIT, WEATHER, AIRPORT, ORGANIC, SUPPLY_GAP
+}
+
+🔄 Real-Time Engine (Android Native)
+// data/remote/websocket/WebSocketClient.kt
+
+class WebSocketClient @Inject constructor(
+    private val okHttpClient: OkHttpClient,
+    @Named("wsUrl") private val wsUrl: String
+) {
+    private var webSocket: WebSocket? = null
+    private var reconnectAttempts = 0
+    private val maxReconnectAttempts = 10
+    private val _events = MutableSharedFlow<WebSocketEvent>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val events: SharedFlow<WebSocketEvent> = _events.asSharedFlow()
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun connect(authToken: String) {
+        if (webSocket != null) return
+
+        val request = Request.Builder()
+            .url("$wsUrl?token=$authToken")
+            .build()
+
+        webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                reconnectAttempts = 0
+                _events.tryEmit(WebSocketEvent.Connected)
+                startHeartbeat()
+            }
+
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                try {
+                    val json = JSONObject(text)
+                    when (json.getString("type")) {
+                        "demand-update" -> handleDemandUpdate(json)
+                        "pulse-new" -> handleNewPulse(json)
+                        "pulse-expired" -> handlePulseExpired(json)
+                        "recommendation-update" -> handleRecommendation(json)
+                        "heartbeat" -> { /* connection alive */ }
+                    }
+                } catch (e: Exception) {
+                    Log.e("WebSocketClient", "Failed to parse message", e)
+                }
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                _events.tryEmit(WebSocketEvent.Disconnected(reason))
+                attemptReconnect(authToken)
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                _events.tryEmit(WebSocketEvent.Error(t))
+                attemptReconnect(authToken)
+            }
+        })
+    }
+
+    fun sendDriverLocation(lat: Double, lng: Double, heading: Float, speed: Float) {
+        val payload = JSONObject().apply {
+            put("type", "driver-location")
+            put("lat", lat)
+            put("lng", lng)
+            put("heading", heading)
+            put("speed", speed)
+        }
+        webSocket?.send(payload.toString())
+    }
+
+    fun markRecommendationOutcome(followed: Boolean, recommendationId: String) {
+        val payload = JSONObject().apply {
+            put("type", "recommendation-feedback")
+            put("followed", followed)
+            put("id", recommendationId)
+        }
+        webSocket?.send(payload.toString())
+    }
+
+    fun disconnect() {
+        webSocket?.close(1000, "Client disconnected")
+        webSocket = null
+        scope.cancel()
+    }
+
+    private fun attemptReconnect(authToken: String) {
+        if (reconnectAttempts >= maxReconnectAttempts) {
+            _events.tryEmit(WebSocketEvent.MaxReconnectReached)
+            return
+        }
+        reconnectAttempts++
+        scope.launch {
+            delay(3000L * reconnectAttempts)
+            connect(authToken)
+        }
+    }
+
+    private fun startHeartbeat() {
+        scope.launch {
+            while (isActive) {
+                delay(30000)
+                webSocket?.send(JSONObject().put("type", "ping").toString())
+            }
+        }
+    }
+
+    private fun handleDemandUpdate(json: JSONObject) {
+        val segmentsArray = json.getJSONArray("segments")
+        val pulsesArray = json.getJSONArray("pulses")
+        
+        val segments = (0 until segmentsArray.length()).map { i ->
+            parseSegment(segmentsArray.getJSONObject(i))
+        }
+        val pulses = (0 until pulsesArray.length()).map { i ->
+            parsePulse(pulsesArray.getJSONObject(i))
+        }
+        
+        _events.tryEmit(WebSocketEvent.DemandUpdate(segments, pulses))
+    }
+
+    private fun handleNewPulse(json: JSONObject) {
+        val pulse = parsePulse(json.getJSONObject("pulse"))
+        _events.tryEmit(WebSocketEvent.PulseCreated(pulse))
+    }
+
+    private fun handlePulseExpired(json: JSONObject) {
+        val pulseId = json.getString("pulseId")
+        _events.tryEmit(WebSocketEvent.PulseExpired(pulseId))
+    }
+
+    private fun handleRecommendation(json: JSONObject) {
+        val rec = parseRecommendation(json.getJSONObject("recommendation"))
+        _events.tryEmit(WebSocketEvent.RecommendationUpdated(rec))
+    }
+
+    // Parse helpers omitted for brevity
+}
+
+sealed class WebSocketEvent {
+    object Connected : WebSocketEvent()
+    data class Disconnected(val reason: String) : WebSocketEvent()
+    data class Error(val throwable: Throwable) : WebSocketEvent()
+    object MaxReconnectReached : WebSocketEvent()
+    data class DemandUpdate(
+        val segments: List<RoadSegmentHeat>,
+        val pulses: List<DemandPulse>
+    ) : WebSocketEvent()
+    data class PulseCreated(val pulse: DemandPulse) : WebSocketEvent()
+    data class PulseExpired(val pulseId: String) : WebSocketEvent()
+    data class RecommendationUpdated(
+        val recommendation: CopilotRecommendation
+    ) : WebSocketEvent()
+}
+
+🎯 Summary: What Each Library Does
+Library	Purpose	Why This One
+Jetpack Compose	Entire UI toolkit	Google's modern Android UI standard; replaces XML
+Mapbox Maps SDK v11	Map rendering + hex heatmap	Best-in-class WebGL rendering on mobile; supports custom GeoJSON layers, style transitions, camera animations
+OkHttp WebSocket	Real-time data connection	Production-tested, built-in reconnection, works with Express/Socket.IO backend
+Vico Charts	Earnings bar charts	Compose-native (no WebView), Material3 theming, smooth animations
+Room Database	Offline cache for zones/earnings	SQLite abstraction with compile-time query verification; full-text search support
+Hilt	Dependency injection	Official Google DI; integrates with ViewModels, WorkManager, Compose
+WorkManager	Background GPS tracking + data sync	Guaranteed execution; handles Doze mode; survives app kills
+FusedLocationProvider	Battery-efficient GPS	Combines GPS+WiFi+Cellular; reduces battery drain by 40% vs raw GPS
+EncryptedSharedPreferences	Secure token storage	AES-256 encryption at rest; protects JWT tokens and payment keys
+Biometric API	Fingerprint/Face unlock	Hardware-backed security; gate for admin console access
+Lottie Compose	Complex animations	AirBnB's vector animation format; pulse rings, loading spinners, success checkmarks
+Shimmer	Skeleton loading states	Valentin Ilk's compose shimmer library; smooth gradient sweeps
+Coil	Async image loading	Kotlin-first; Compose integration; memory efficient
+Accompanist Permissions	Runtime permission flow	Wrages messy Activity Result APIs into clean Compose-friendly callba

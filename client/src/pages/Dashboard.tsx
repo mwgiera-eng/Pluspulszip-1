@@ -535,6 +535,7 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
               icon={Wallet}
               trend="up"
               trendValue="12%"
+              variant="green"
             />
             <StatsCard
               title="Avg. Trip"
@@ -542,18 +543,21 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
               icon={TrendingUp}
               trend="neutral"
               trendValue="0%"
+              variant="blue"
             />
             <StatsCard
               title="Trips Completed"
               value={isPublic ? "—" : (stats ? stats.totalTrips : "...")}
               icon={MapPin}
               description="This month"
+              variant="purple"
             />
             <StatsCard
               title="Active Hours"
               value={isPublic ? "—" : "34.5h"}
               icon={Clock}
               description="Online time"
+              variant="amber"
             />
           </div>
 
