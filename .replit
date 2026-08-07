@@ -55,3 +55,7 @@ ADMIN_USER_ID = "512802164"
 
 [userenv.production]
 ADMIN_USER_ID = "512802164"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
