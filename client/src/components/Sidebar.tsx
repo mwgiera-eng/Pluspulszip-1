@@ -28,7 +28,7 @@ export function Sidebar() {
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border/10">
         <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-400">
-          ShiftOptima
+          +Puls
         </h1>
         <p className="text-xs text-muted-foreground mt-1">Driver Intelligence</p>
         {subscriptionInfo && !isPremium && subscriptionInfo.status === "trial" && subscriptionInfo.trialDaysLeft !== null && (

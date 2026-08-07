@@ -28,12 +28,12 @@ function PublicBanner() {
   return (
     <div className="w-full bg-primary/10 border-b border-primary/20 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap" data-testid="banner-public">
       <p className="text-xs text-primary font-medium">
-        Viewing ShiftOptima in read-only mode — live map and zone data available.
+        Przeglądasz PlusPuls w trybie publicznym — mapa i strefy dostępne.
       </p>
       <div className="flex items-center gap-2 shrink-0">
         <Link href="/login">
           <button className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-md font-semibold hover:bg-primary/90 transition-colors" data-testid="button-banner-signin">
-            Register / Sign In
+            Sprawdź sam!
           </button>
         </Link>
       </div>
@@ -78,23 +78,6 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
   if (!user.accountType) {
     return <AccountTypeSetup />;
-  }
-
-  if (user.status === "pending") {
-    return <Pending />;
-  }
-
-  if (user.status === "rejected") {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6" data-testid="page-rejected">
-        <div className="w-full max-w-md text-center space-y-4">
-          <div className="text-4xl">&#x26D4;</div>
-          <h1 className="text-2xl font-bold">Access Denied</h1>
-          <p className="text-muted-foreground text-sm">Your registration was not approved. Contact the administrator if you believe this is an error.</p>
-          <button onClick={() => window.location.href = "/api/logout"} className="text-xs text-muted-foreground underline mt-4">Sign out</button>
-        </div>
-      </div>
-    );
   }
 
   return <Component />;

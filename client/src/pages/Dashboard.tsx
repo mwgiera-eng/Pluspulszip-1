@@ -419,11 +419,11 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
           {isPublic && (
             <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4" data-testid="banner-public-cta">
               <div>
-                <p className="font-semibold text-sm text-primary">Unlock full intelligence</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Register or sign in to access AI strategic advice, earnings tracking, day planner and more.</p>
+                <p className="font-semibold text-sm text-primary">Odblokuj pełny dostęp</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Zaloguj się, aby korzystać z porad AI, śledzenia zarobków, planera dnia i więcej.</p>
               </div>
               <a href="/login" className="shrink-0 bg-primary text-primary-foreground text-xs font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors" data-testid="button-public-cta">
-                Register / Sign In
+                Sprawdź sam!
               </a>
             </div>
           )}

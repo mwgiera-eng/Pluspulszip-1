@@ -19,7 +19,7 @@ export default function Login() {
             <div className="p-2 bg-primary rounded-lg">
               <Map className="w-6 h-6 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold font-mono">ShiftOptima</h1>
+            <h1 className="text-2xl font-bold font-mono">+Puls</h1>
           </div>
           
           <h2 className="text-5xl font-bold leading-tight tracking-tight mb-6">
@@ -43,27 +43,27 @@ export default function Login() {
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
               <ShieldCheck className="w-5 h-5 text-emerald-500" />
             </div>
-            <h3 className="font-semibold text-lg">Invite-Only Access</h3>
-            <p className="text-sm text-muted-foreground">Controlled access ensures data quality and community trust.</p>
+            <h3 className="font-semibold text-lg">Otwarta platforma</h3>
+            <p className="text-sm text-muted-foreground">Każdy kierowca może dołączyć — bez zaproszenia, bez czekania.</p>
           </div>
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
               <UserPlus className="w-5 h-5 text-sky-400" />
             </div>
-            <h3 className="font-semibold text-lg">Register to Join</h3>
-            <p className="text-sm text-muted-foreground">Submit a registration request and get approved by the admin.</p>
+            <h3 className="font-semibold text-lg">Dołącz bez rejestracji</h3>
+            <p className="text-sm text-muted-foreground">Zaloguj się kontem Replit i od razu korzystaj z pełnej wersji.</p>
           </div>
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
               <Map className="w-5 h-5 text-violet-400" />
             </div>
-            <h3 className="font-semibold text-lg">Preview Available</h3>
-            <p className="text-sm text-muted-foreground">Browse the live map and zone data without an account.</p>
+            <h3 className="font-semibold text-lg">Podgląd bez konta</h3>
+            <p className="text-sm text-muted-foreground">Sprawdź mapę na żywo i dane stref bez logowania.</p>
           </div>
         </div>
 
         <p className="text-xs text-muted-foreground mt-12">
-          &copy; 2024 ShiftOptima Analytics. Not affiliated with Bolt Technology OÜ, Uber Technologies Inc., or any ride-hailing platform.
+          &copy; 2024 PlusPuls Analytics. Niezależne narzędzie — bez powiązań z Bolt, Uber ani żadną platformą.
         </p>
       </div>
 
@@ -77,11 +77,11 @@ export default function Login() {
               <div className="p-2 bg-primary rounded-lg">
                 <Map className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold font-mono">ShiftOptima</span>
+              <span className="text-xl font-bold font-mono">+Puls</span>
             </div>
-            <h3 className="text-2xl font-bold">Join ShiftOptima</h3>
+            <h3 className="text-2xl font-bold">Dołącz do PlusPuls</h3>
             <p className="text-muted-foreground text-sm">
-              Invite-only platform for professional ride-hailing drivers. Register or sign in with your Replit account to request access.
+              Platforma dla kierowców w Polsce. Zaloguj się kontem Replit i zacznij zarabiać więcej.
             </p>
           </div>
 
@@ -93,12 +93,12 @@ export default function Login() {
                 onClick={handleLogin}
                 data-testid="button-login"
               >
-                Register / Sign In with Replit
+                Sprawdź sam!
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
 
               <p className="text-xs text-center text-muted-foreground border border-border/40 rounded-lg px-4 py-2.5 bg-muted/20" data-testid="text-disclaimer">
-                ShiftOptima is an independent analytics tool. It is not affiliated with, endorsed by, or associated with Bolt Technology OÜ, Uber Technologies Inc., or any other ride-hailing platform.
+                PlusPuls jest niezależnym narzędziem analitycznym. Nie jest powiązany z Bolt Technology OÜ, Uber Technologies Inc. ani żadną inną platformą ride-hailing.
               </p>
 
               <div className="relative">
@@ -117,7 +117,7 @@ export default function Login() {
                 asChild
                 data-testid="button-preview"
               >
-                <Link href="/">Browse live map (no login)</Link>
+                <Link href="/">Sprawdź sam!</Link>
               </Button>
 
               <div className="relative">
@@ -130,7 +130,7 @@ export default function Login() {
               </div>
 
               <p className="text-xs text-center text-muted-foreground">
-                Already approved? You will go straight to your dashboard. New users are placed in a review queue pending admin approval.
+                Masz już konto? Wejdziesz od razu do panelu. Nowi użytkownicy są zatwierdzani automatycznie.
               </p>
             </div>
           </Card>

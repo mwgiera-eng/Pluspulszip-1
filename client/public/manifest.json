@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "ShiftOptima",
-  "short_name": "ShiftOptima",
-  "description": "Real-time driver intelligence for ride-hailing drivers in Kraków, Poland",
+  "name": "PlusPuls",
+  "short_name": "+Puls",
+  "description": "Inteligencja dla kierowców ride-hailing w Polsce",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

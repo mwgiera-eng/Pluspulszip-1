@@ -62,7 +62,7 @@ async function upsertUser(claims: any) {
     (email === ADMIN_EMAIL && (claims["email_verified"] === true || claims["email_verified"] == null));
 
   const role = isAdminUser ? "admin" : "user";
-  const status = isAdminUser ? "approved" : "pending";
+  const status = "approved"; // all users auto-approved; no admin review gate
 
   await authStorage.upsertUser({
     id: sub,
