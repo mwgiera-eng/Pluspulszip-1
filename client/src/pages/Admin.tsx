@@ -17,7 +17,7 @@ function minutesAgo(ts: string | Date | null | undefined): number {
 }
 
 function StatusDot({ minsAgo }: { minsAgo: number }) {
-  if (minsAgo < 5) return <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_1px_theme(colors.emerald.400)]" data-testid="dot-online" />;
+  if (minsAgo < 5) return <span className="inline-block w-2 h-2 rounded-full bg-primary" data-testid="dot-online" />;
   if (minsAgo < 15) return <span className="inline-block w-2 h-2 rounded-full bg-amber-400" data-testid="dot-idle" />;
   return <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/40" data-testid="dot-away" />;
 }
@@ -40,12 +40,12 @@ function ActiveUsersPanel() {
     <Card data-testid="card-active-users">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Radio className="w-5 h-5 text-emerald-400" />
+          <Radio className="w-5 h-5 text-primary" />
           Active Users
           {!isLoading && (
             <Badge
               variant="secondary"
-              className={`ml-1 text-xs ${onlineCount > 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-muted text-muted-foreground"}`}
+              className={`ml-1 text-xs ${onlineCount > 0 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
               data-testid="badge-online-count"
             >
               {onlineCount} online now
@@ -114,7 +114,7 @@ function AccountTypeBadge({ accountType, companyName }: { accountType: string | 
   if (accountType === "provider") {
     return (
       <span className="inline-flex items-center gap-1">
-        <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-violet-500/10 text-violet-400 border-violet-500/20">
+        <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/20">
           <Building2 className="w-2.5 h-2.5 mr-0.5" />Fleet
         </Badge>
         {companyName && <span className="text-[10px] text-muted-foreground">{companyName}</span>}
@@ -192,7 +192,7 @@ function PendingUsersPanel() {
           </div>
         ) : pendingCount === 0 ? (
           <div className="flex flex-col items-center py-8 gap-2 text-muted-foreground">
-            <CheckCircle className="w-8 h-8 text-emerald-400/50" />
+            <CheckCircle className="w-8 h-8 text-primary/50" />
             <p className="text-sm">No pending registrations</p>
           </div>
         ) : (
@@ -220,7 +220,7 @@ function PendingUsersPanel() {
                 <div className="flex items-center gap-2 shrink-0">
                   <Button
                     size="sm"
-                    className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="h-8 text-xs bg-primary hover:bg-primary text-background"
                     onClick={() => approveMutation.mutate(u.id)}
                     disabled={approveMutation.isPending || rejectMutation.isPending}
                     data-testid={`button-approve-${u.id}`}
@@ -322,8 +322,8 @@ export default function Admin() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-500/10 rounded-lg">
-                    <BarChart3 className="w-5 h-5 text-emerald-400" />
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <BarChart3 className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold" data-testid="text-admin-active-count">
@@ -337,8 +337,8 @@ export default function Admin() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-violet-500/10 rounded-lg">
-                    <ShieldAlert className="w-5 h-5 text-violet-400" />
+                  <div className="p-2 bg-destructive/10 rounded-lg">
+                    <ShieldAlert className="w-5 h-5 text-destructive" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold" data-testid="text-admin-admin-count">
@@ -390,7 +390,7 @@ export default function Admin() {
                           <td className="py-2.5 px-3 text-muted-foreground">{u.email}</td>
                           <td className="py-2.5 px-3">
                             {u.phoneNumber ? (
-                              <span className="text-emerald-400">{maskPhone(u.phoneNumber)}</span>
+                              <span className="text-primary">{maskPhone(u.phoneNumber)}</span>
                             ) : (
                               <span className="text-muted-foreground/50">—</span>
                             )}
@@ -405,9 +405,9 @@ export default function Admin() {
                               variant="secondary"
                               className={`text-xs ${
                                 u.status === "approved"
-                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  ? "bg-primary/10 text-primary"
                                   : u.status === "rejected"
-                                  ? "bg-red-500/10 text-red-400"
+                                  ? "bg-destructive/10 text-destructive"
                                   : "bg-amber-500/10 text-amber-400"
                               }`}
                               data-testid={`badge-status-${idx}`}

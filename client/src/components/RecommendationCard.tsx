@@ -147,47 +147,47 @@ const categoryConfig = {
   departure: {
     icon: PlaneTakeoff,
     label: "Departures",
-    color: "orange",
-    iconBg: "bg-orange-500/10 border-orange-500/20 text-orange-500",
-    badgeBg: "bg-orange-500/15 text-orange-400",
-    border: "border-orange-500/30",
-    labelBg: "bg-orange-500 text-white",
+    color: "amber",
+    iconBg: "bg-status-high/10 border-status-high/20 text-status-high",
+    badgeBg: "bg-status-high/15 text-status-high",
+    border: "border-status-high/30",
+    labelBg: "bg-status-high text-background",
   },
   arrival: {
     icon: PlaneLanding,
     label: "Arrivals",
-    color: "sky",
-    iconBg: "bg-sky-500/10 border-sky-500/20 text-sky-500",
-    badgeBg: "bg-sky-500/15 text-sky-400",
-    border: "border-sky-500/30",
-    labelBg: "bg-sky-500 text-white",
+    color: "primary",
+    iconBg: "bg-primary/10 border-primary/20 text-primary",
+    badgeBg: "bg-primary/15 text-primary",
+    border: "border-primary/30",
+    labelBg: "bg-primary text-background",
   },
   upcoming_dep: {
     icon: PlaneTakeoff,
     label: "Departures",
-    color: "violet",
-    iconBg: "bg-violet-500/10 border-violet-500/20 text-violet-500",
-    badgeBg: "bg-violet-500/15 text-violet-400",
-    border: "border-violet-500/30",
-    labelBg: "bg-violet-500 text-white",
+    color: "primary",
+    iconBg: "bg-primary/10 border-primary/20 text-primary",
+    badgeBg: "bg-primary/15 text-primary",
+    border: "border-primary/30",
+    labelBg: "bg-primary text-background",
   },
   upcoming_arr: {
     icon: PlaneLanding,
     label: "Arrivals",
-    color: "sky",
-    iconBg: "bg-sky-500/10 border-sky-500/20 text-sky-500",
-    badgeBg: "bg-sky-500/15 text-sky-400",
-    border: "border-sky-500/30",
-    labelBg: "bg-sky-500 text-white",
+    color: "primary",
+    iconBg: "bg-primary/10 border-primary/20 text-primary",
+    badgeBg: "bg-primary/15 text-primary",
+    border: "border-primary/30",
+    labelBg: "bg-primary text-background",
   },
   tomorrow: {
     icon: Plane,
     label: "Tomorrow",
-    color: "indigo",
-    iconBg: "bg-indigo-500/10 border-indigo-500/20 text-indigo-500",
-    badgeBg: "bg-indigo-500/15 text-indigo-400",
-    border: "border-indigo-500/30",
-    labelBg: "bg-indigo-500 text-white",
+    color: "muted",
+    iconBg: "bg-secondary border-border text-muted-foreground",
+    badgeBg: "bg-secondary text-muted-foreground",
+    border: "border-border",
+    labelBg: "bg-secondary text-foreground",
   },
   zone: {
     icon: Navigation,
@@ -201,10 +201,10 @@ const categoryConfig = {
 };
 
 const urgencyConfig: Record<string, { label: string; className: string }> = {
-  "IMMINENT": { label: "Now", className: "bg-red-500/15 text-red-400" },
-  "PREPARE NOW": { label: "Soon", className: "bg-amber-500/15 text-amber-400" },
-  "PLAN AHEAD": { label: "Plan", className: "bg-blue-500/15 text-blue-400" },
-  "HEAD TO AIRPORT": { label: "Go", className: "bg-emerald-500/15 text-emerald-400" },
+  "IMMINENT": { label: "Teraz", className: "bg-destructive/15 text-destructive" },
+  "PREPARE NOW": { label: "Wkrótce", className: "bg-status-high/15 text-status-high" },
+  "PLAN AHEAD": { label: "Planuj", className: "bg-secondary text-muted-foreground" },
+  "HEAD TO AIRPORT": { label: "Jedź", className: "bg-primary/15 text-primary" },
 };
 
 export function RecommendationCard({ rec }: RecommendationCardProps) {
@@ -255,9 +255,9 @@ export function RecommendationCard({ rec }: RecommendationCardProps) {
                 variant="secondary"
                 className={cn(
                   "text-xs font-bold shrink-0",
-                  parsed.countdownType === "active" && "bg-emerald-500/15 text-emerald-400",
-                  parsed.countdownType === "upcoming" && "bg-amber-500/15 text-amber-400",
-                  parsed.countdownType === "planned" && "bg-blue-500/15 text-blue-400"
+                    parsed.countdownType === "active" && "bg-primary/15 text-primary",
+                    parsed.countdownType === "upcoming" && "bg-status-high/15 text-status-high",
+                    parsed.countdownType === "planned" && "bg-secondary text-muted-foreground"
                 )}
                 data-testid={`badge-countdown-${rec.id}`}
               >
@@ -308,9 +308,9 @@ export function RecommendationCard({ rec }: RecommendationCardProps) {
               variant="secondary"
               className={cn(
                 "text-xs",
-                rec.action === "MOVE" && "bg-blue-500/10 text-blue-400",
-                rec.action === "TAKE" && "bg-emerald-500/10 text-emerald-400",
-                rec.action === "WAIT" && "bg-amber-500/10 text-amber-400"
+                rec.action === "MOVE" && "bg-secondary text-foreground",
+                rec.action === "TAKE" && "bg-primary/10 text-primary",
+                rec.action === "WAIT" && "bg-status-high/10 text-status-high"
               )}
             >
               {rec.action === "MOVE" ? "Relocate" : rec.action === "TAKE" ? "Accept rides" : "Wait here"}

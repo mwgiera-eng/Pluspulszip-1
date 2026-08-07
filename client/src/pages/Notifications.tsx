@@ -24,28 +24,28 @@ const NOTIFICATION_TYPES = [
     label: "Airport Flight Waves",
     description: "Alerts when major arrival or departure waves hit Balice Airport",
     icon: Plane,
-    color: "text-blue-400",
+    color: "text-muted-foreground",
   },
   {
     key: "events" as const,
     label: "Events & Concerts",
     description: "Surge demand when Tauron Arena, ICE Kraków, EXPO are active",
     icon: Calendar,
-    color: "text-violet-400",
+    color: "text-destructive",
   },
   {
     key: "hotZones" as const,
     label: "Hot Zones",
     description: "Zones hitting high or surge demand — accept every ride",
     icon: Flame,
-    color: "text-red-400",
+    color: "text-destructive",
   },
   {
     key: "relocate" as const,
     label: "Relocation Tips",
     description: "Move suggestions to a better-earning zone",
     icon: Navigation,
-    color: "text-emerald-400",
+    color: "text-primary",
   },
   {
     key: "bestEarnings" as const,
@@ -170,9 +170,9 @@ export default function Notifications() {
             className={cn(
               "border",
               permission === "granted"
-                ? "border-emerald-500/30 bg-emerald-500/5"
+                ? "border-primary/30 bg-primary/5"
                 : permission === "denied"
-                ? "border-red-500/30 bg-red-500/5"
+                ? "border-destructive/30 bg-destructive/5"
                 : "border-amber-500/30 bg-amber-500/5"
             )}
             data-testid="card-permission-status"
@@ -181,9 +181,9 @@ export default function Notifications() {
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3">
                   {permission === "granted" ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
                   ) : permission === "denied" ? (
-                    <BellOff className="w-5 h-5 text-red-400 shrink-0" />
+                    <BellOff className="w-5 h-5 text-destructive shrink-0" />
                   ) : (
                     <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
                   )}
@@ -229,7 +229,7 @@ export default function Notifications() {
 
                 {permission === "granted" && (
                   <Badge
-                    className="bg-emerald-500/15 text-emerald-400 border-0 shrink-0"
+                    className="bg-primary/15 text-primary border-0 shrink-0"
                     data-testid="badge-notifications-active"
                   >
                     {isActive ? "Active" : "Paused"}
@@ -310,7 +310,7 @@ export default function Notifications() {
                   <Button
                     onClick={() => mutation.mutate(localPrefs)}
                     disabled={mutation.isPending}
-                    className="shadow-lg shadow-primary/20"
+                    className="shadow-none shadow-primary/20"
                     data-testid="button-save-notifications"
                   >
                     {mutation.isPending ? "Saving..." : "Save Preferences"}

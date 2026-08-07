@@ -72,12 +72,9 @@ const HEAT_TIME_OFFSETS = [
 ];
 
 function getHeatColor(score: number): string {
-  if (score >= 85) return '#ffffff';
-  if (score >= 70) return '#ef4444';
-  if (score >= 50) return '#f97316';
-  if (score >= 30) return '#eab308';
-  if (score >= 15) return '#22d3ee';
-  return '#3b82f6';
+  if (score >= 70) return '#FF5470';
+  if (score >= 30) return '#2EE6A6';
+  return '#8B8FA8';
 }
 
 function ZoneProfitHeatSection() {
@@ -98,10 +95,10 @@ function ZoneProfitHeatSection() {
   const topZones = heatData?.zones.slice(0, 5) || [];
 
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden" data-testid="section-profit-heat">
+    <div className="bg-card rounded-2xl border border-border shadow-none overflow-hidden" data-testid="section-profit-heat">
       <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <Flame className="w-4 h-4 text-orange-400" />
+          <Flame className="w-4 h-4 text-status-high" />
           <h3 className="font-semibold text-sm">Zone Profit Heat</h3>
         </div>
         <div className="flex items-center gap-2">
@@ -116,7 +113,7 @@ function ZoneProfitHeatSection() {
                 className={cn(
                   "px-2 py-0.5 rounded text-[10px] font-medium transition-all",
                   selectedIdx === idx
-                    ? "bg-orange-500 text-white shadow-sm"
+                    ? "bg-primary text-background"
                     : "bg-muted/50 text-muted-foreground hover:bg-muted"
                 )}
                 data-testid={`btn-dash-heat-${o.label.replace('+', 'plus-')}`}
@@ -129,8 +126,8 @@ function ZoneProfitHeatSection() {
       </div>
 
       {heatData && (
-        <div className="px-3 py-1.5 bg-orange-500/5 border-b border-orange-500/10">
-          <p className="text-[11px] text-orange-300/80 flex items-center gap-1.5" data-testid="text-heat-narrative">
+        <div className="px-3 py-1.5 bg-status-high/5 border-b border-status-high/10">
+          <p className="text-[11px] text-status-high/80 flex items-center gap-1.5" data-testid="text-heat-narrative">
             <Clock className="w-3 h-3 shrink-0" />
             {heatData.transitionNarrative}
           </p>
@@ -145,8 +142,8 @@ function ZoneProfitHeatSection() {
               key={zone.zoneId}
               className={cn(
                 "rounded-lg border p-2.5 flex flex-col gap-1",
-                zone.profitScore >= 70 && "border-red-500/30 bg-red-500/5",
-                zone.profitScore >= 50 && zone.profitScore < 70 && "border-orange-500/30 bg-orange-500/5",
+                zone.profitScore >= 70 && "border-destructive/30 bg-destructive/5",
+                zone.profitScore >= 50 && zone.profitScore < 70 && "border-status-high/30 bg-status-high/5",
                 zone.profitScore < 50 && "border-border/50 bg-muted/20"
               )}
               data-testid={`card-heat-zone-${zone.zoneId}`}
@@ -160,7 +157,7 @@ function ZoneProfitHeatSection() {
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 <span className="capitalize">{zone.zoneType}</span>
                 {zone.surgeMultiplier > 1 && (
-                  <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-violet-500/10 text-violet-400">
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0 bg-destructive/10 text-destructive">
                     {zone.surgeMultiplier}x
                   </Badge>
                 )}
@@ -172,7 +169,7 @@ function ZoneProfitHeatSection() {
                 />
               </div>
               {i === 0 && (
-                <span className="text-[9px] text-orange-400 font-semibold">Hottest zone</span>
+                <span className="text-[9px] text-status-high font-semibold">Hottest zone</span>
               )}
             </div>
           );
@@ -184,11 +181,11 @@ function ZoneProfitHeatSection() {
 
 function getStatusColor(status: string): { text: string; bg: string; border: string } {
   const s = status.toLowerCase();
-  if (s.includes('landed') || s.includes('arrived')) return { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' };
+  if (s.includes('landed') || s.includes('arrived')) return { text: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30' };
   if (s.includes('boarding') || s.includes('last call')) return { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' };
   if (s.includes('gate closed') || s.includes('departed') || s.includes('took off')) return { text: 'text-muted-foreground', bg: 'bg-muted/30', border: 'border-border/50' };
-  if (s.includes('delayed') || s.includes('cancelled') || s.includes('diverted')) return { text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' };
-  if (s.includes('check-in') || s.includes('expected')) return { text: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/30' };
+  if (s.includes('delayed') || s.includes('cancelled') || s.includes('diverted')) return { text: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30' };
+  if (s.includes('check-in') || s.includes('expected')) return { text: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30' };
   return { text: 'text-muted-foreground', bg: 'bg-muted/20', border: 'border-border/50' };
 }
 
@@ -246,10 +243,10 @@ function FlightsSection() {
   const activeSource = activeTab === "arrivals" ? flightData?.arrivalsSource : flightData?.departuresSource;
 
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden" data-testid="section-flights">
+    <div className="bg-card rounded-2xl border border-border shadow-none overflow-hidden" data-testid="section-flights">
       <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <Plane className="w-4 h-4 text-sky-400" />
+          <Plane className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-sm">Flights — Balice Airport (KRK)</h3>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -260,7 +257,7 @@ function FlightsSection() {
             </>
           ) : (
             <>
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
               Live flight data
             </>
           )}
@@ -273,7 +270,7 @@ function FlightsSection() {
           className={cn(
             "flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-all border-b-2",
             activeTab === "arrivals"
-              ? "border-sky-500 text-sky-400 bg-sky-500/5"
+              ? "border-primary text-primary bg-primary/5"
               : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
           )}
           data-testid="tab-arrivals"
@@ -289,7 +286,7 @@ function FlightsSection() {
           className={cn(
             "flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-all border-b-2",
             activeTab === "departures"
-              ? "border-orange-500 text-orange-400 bg-orange-500/5"
+              ? "border-status-high text-status-high bg-status-high/5"
               : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
           )}
           data-testid="tab-departures"
@@ -392,10 +389,10 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
 
   const getDemandColor = (level: string) => {
     switch (level) {
-      case "surge": return "text-violet-400";
-      case "high": return "text-red-400";
+      case "surge": return "text-destructive";
+      case "high": return "text-destructive";
       case "medium": return "text-amber-400";
-      default: return "text-emerald-400";
+      default: return "text-primary";
     }
   };
 
@@ -440,7 +437,7 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
             </div>
           )}
 
-          {!isPublic && <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden" data-testid="section-strategic-advice">
+          {!isPublic && <div className="bg-card rounded-2xl border border-border shadow-none overflow-hidden" data-testid="section-strategic-advice">
             <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <Crosshair className="w-4 h-4 text-primary" />
@@ -461,7 +458,7 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
                 )}
                 {(geoStatus === "denied" || geoStatus === "unavailable" || geoStatus === "error") && (
                   <>
-                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                    <div className="w-1.5 h-1.5 bg-destructive rounded-full" />
                     <span>GPS Off</span>
                   </>
                 )}
@@ -562,7 +559,7 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
               value={isPublic ? "—" : (stats ? stats.totalTrips : "...")}
               icon={MapPin}
               description="This month"
-              variant="purple"
+              variant="default"
             />
             <StatsCard
               title="Active Hours"
@@ -580,7 +577,7 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
           <FlightsSection />
 
           {!isPublic && (
-            <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden flex flex-col">
+            <div className="bg-card rounded-2xl border border-border shadow-none overflow-hidden flex flex-col">
               <div className="p-3 border-b border-border bg-muted/30">
                 <h3 className="font-semibold text-sm">Strategic Actions</h3>
               </div>
@@ -607,7 +604,7 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
             </div>
           )}
 
-          <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden flex flex-col h-[350px] lg:h-[450px]">
+          <div className="bg-card rounded-2xl border border-border shadow-none overflow-hidden flex flex-col h-[350px] lg:h-[450px]">
             <div className="p-3 border-b border-border flex justify-between items-center bg-muted/30">
               <h3 className="font-semibold text-sm">Live Demand Map</h3>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

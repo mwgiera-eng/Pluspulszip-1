@@ -64,7 +64,7 @@ export default function Settings() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Phone</span>
                       <span className="text-sm font-medium flex items-center gap-1.5" data-testid="text-user-phone">
-                        <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                        <Phone className="w-3.5 h-3.5 text-primary" />
                         {user.phoneNumber}
                       </span>
                     </div>

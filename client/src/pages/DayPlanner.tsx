@@ -32,15 +32,15 @@ interface DayPlanResponse {
 }
 
 const DEMAND_COLORS: Record<string, string> = {
-  surge: "bg-violet-500/20 border-violet-500/30 text-violet-300",
-  high: "bg-red-500/15 border-red-500/25 text-red-300",
+  surge: "bg-destructive/20 border-destructive/30 text-destructive",
+  high: "bg-destructive/15 border-destructive/25 text-destructive",
   medium: "bg-amber-500/15 border-amber-500/25 text-amber-300",
   low: "bg-zinc-500/10 border-zinc-500/20 text-zinc-400",
 };
 
 const DEMAND_DOT: Record<string, string> = {
-  surge: "bg-violet-400",
-  high: "bg-red-400",
+  surge: "bg-destructive",
+  high: "bg-destructive",
   medium: "bg-amber-400",
   low: "bg-zinc-500",
 };
@@ -154,8 +154,8 @@ export default function DayPlanner() {
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {block.flights.length > 0 && <Plane className="w-3.5 h-3.5 text-blue-400" />}
-                        {block.events.length > 0 && <CalendarDays className="w-3.5 h-3.5 text-violet-400" />}
+                        {block.flights.length > 0 && <Plane className="w-3.5 h-3.5 text-muted-foreground" />}
+                        {block.events.length > 0 && <CalendarDays className="w-3.5 h-3.5 text-destructive" />}
                         {block.platformHighlight === "uber" && <SiUber className="w-3 h-3 text-foreground" />}
                         <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0", DEMAND_COLORS[block.demandLevel])}>
                           {block.demandLevel}
@@ -176,9 +176,9 @@ export default function DayPlanner() {
 
                         {block.flights.length > 0 && (
                           <div className="flex items-start gap-2">
-                            <Plane className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                            <Plane className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                             <div>
-                              <p className="text-xs font-medium text-blue-400">Flights</p>
+                              <p className="text-xs font-medium text-muted-foreground">Flights</p>
                               {block.flights.map((f, i) => (
                                 <p key={i} className="text-xs text-muted-foreground">{f.label} ({f.count} flights)</p>
                               ))}
@@ -188,9 +188,9 @@ export default function DayPlanner() {
 
                         {block.events.length > 0 && (
                           <div className="flex items-start gap-2">
-                            <CalendarDays className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+                            <CalendarDays className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                             <div>
-                              <p className="text-xs font-medium text-violet-400">Events</p>
+                              <p className="text-xs font-medium text-destructive">Events</p>
                               {block.events.map((e, i) => (
                                 <p key={i} className="text-xs text-muted-foreground">{e.title} at {e.venue} ({e.status})</p>
                               ))}
