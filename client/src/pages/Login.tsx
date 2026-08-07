@@ -1,10 +1,59 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ShieldCheck, Zap, Users, MapPin } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ShieldCheck, Zap, Users, MapPin, Loader2 } from "lucide-react";
+
+type Mode = "register" | "login";
 
 export default function Login() {
-  const handleLogin = () => {
+  const [mode, setMode] = useState<Mode>("register");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleGoogle = () => {
     window.location.href = "/api/login";
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (mode === "register") {
+      if (!firstName.trim() || !lastName.trim()) return setError("Podaj imię i nazwisko.");
+      if (password.length < 8) return setError("Hasło musi mieć minimum 8 znaków.");
+      if (password !== password2) return setError("Hasła nie są identyczne.");
+    }
+
+    setSubmitting(true);
+    try {
+      const url = mode === "register" ? "/api/register" : "/api/login/password";
+      const body = mode === "register"
+        ? { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password }
+        : { email: email.trim(), password };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.message ?? "Coś poszło nie tak. Spróbuj ponownie.");
+        return;
+      }
+      window.location.href = "/";
+    } catch {
+      setError("Błąd połączenia. Spróbuj ponownie.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -88,19 +137,108 @@ export default function Login() {
               </div>
               <span className="text-xl font-bold">+Puls</span>
             </div>
-            <h3 className="text-2xl font-bold">Dołącz do PlusPuls</h3>
+            <h3 className="text-2xl font-bold">
+              {mode === "register" ? "Utwórz konto" : "Zaloguj się"}
+            </h3>
             <p className="text-muted-foreground text-sm">
-              Zaloguj się kontem Google i zacznij zarabiać więcej.
+              {mode === "register"
+                ? "Załóż konto i zacznij zarabiać więcej."
+                : "Witaj z powrotem — kontynuuj tam, gdzie skończyłeś."}
             </p>
           </div>
 
-          <Card className="p-8 border-border bg-card" data-testid="card-login">
-            <div className="space-y-4">
+          <Card className="p-6 lg:p-8 border-border bg-card" data-testid="card-login">
+            <div className="space-y-5">
+              {/* Mode switch */}
+              <div className="grid grid-cols-2 p-1 rounded-xl bg-secondary" data-testid="tabs-auth-mode">
+                <button
+                  type="button"
+                  onClick={() => { setMode("register"); setError(null); }}
+                  className={`h-9 rounded-lg text-sm font-semibold transition-colors ${
+                    mode === "register" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  }`}
+                  data-testid="tab-register"
+                >
+                  Rejestracja
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode("login"); setError(null); }}
+                  className={`h-9 rounded-lg text-sm font-semibold transition-colors ${
+                    mode === "login" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  }`}
+                  data-testid="tab-login"
+                >
+                  Logowanie
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4" data-testid="form-auth">
+                {mode === "register" && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="firstName">Imię</Label>
+                      <Input id="firstName" value={firstName} onChange={e => setFirstName(e.target.value)}
+                        placeholder="Jan" autoComplete="given-name" required data-testid="input-first-name" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="lastName">Nazwisko</Label>
+                      <Input id="lastName" value={lastName} onChange={e => setLastName(e.target.value)}
+                        placeholder="Kowalski" autoComplete="family-name" required data-testid="input-last-name" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Adres e-mail</Label>
+                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="jan@przyklad.pl" autoComplete="email" required data-testid="input-email" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Hasło</Label>
+                  <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder={mode === "register" ? "Minimum 8 znaków" : "Twoje hasło"}
+                    autoComplete={mode === "register" ? "new-password" : "current-password"}
+                    required data-testid="input-password" />
+                </div>
+
+                {mode === "register" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password2">Powtórz hasło</Label>
+                    <Input id="password2" type="password" value={password2} onChange={e => setPassword2(e.target.value)}
+                      placeholder="Powtórz hasło" autoComplete="new-password" required data-testid="input-password-confirm" />
+                  </div>
+                )}
+
+                {error && (
+                  <p className="text-sm text-destructive" role="alert" data-testid="text-auth-error">{error}</p>
+                )}
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={submitting}
+                  className="w-full h-12 text-base font-semibold"
+                  data-testid="button-submit-auth"
+                >
+                  {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {mode === "register" ? "Załóż konto" : "Zaloguj się"}
+                </Button>
+              </form>
+
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">lub</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+
               {/* Google sign-in button */}
               <Button
                 size="lg"
+                variant="outline"
                 className="w-full h-12 text-base font-semibold flex items-center justify-center gap-3"
-                onClick={handleLogin}
+                onClick={handleGoogle}
                 data-testid="button-login"
               >
                 {/* Official Google "G" logo colours */}
@@ -111,7 +249,7 @@ export default function Login() {
                   <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
                   <path fill="none" d="M0 0h48v48H0z"/>
                 </svg>
-                Sprawdź sam!
+                Kontynuuj z Google
               </Button>
 
               <p className="text-xs text-center text-muted-foreground border border-border/40 rounded-lg px-4 py-2.5 bg-muted/20" data-testid="text-disclaimer">

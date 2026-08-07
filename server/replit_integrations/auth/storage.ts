@@ -104,3 +104,10 @@ class AuthStorage implements IAuthStorage {
 }
 
 export const authStorage = new AuthStorage();
+
+/** Strip sensitive fields before sending a user object to any client. */
+export function sanitizeUser<T extends { passwordHash?: string | null }>(user: T): Omit<T, "passwordHash"> {
+  const { passwordHash, ...safe } = user;
+  return safe;
+}
+

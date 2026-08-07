@@ -7,7 +7,7 @@ import type { InsertEarning } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replit_integrations/auth";
 import { registerAuthRoutes } from "./replit_integrations/auth";
-import { authStorage } from "./replit_integrations/auth/storage";
+import { authStorage, sanitizeUser } from "./replit_integrations/auth/storage";
 import { generateRecommendations, getArrivalsWindowEstimate, generateLocationAwareAdvice, getZoneProfitHeat } from "./recommendationEngine";
 import { getSubscriptionStatus, activateSubscription } from "./subscriptionService";
 import { registerTransaction, processBlikPayment, verifyWebhookSignature, verifyTransaction, isSandboxMode, type PaymentMethod } from "./przelewy24Service";
@@ -22,10 +22,11 @@ import { parse } from "csv-parse/sync";
 
 const requirePremium: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
-  if (!req.isAuthenticated() || !user?.claims?.sub) {
+  const userId = user?.id ?? user?.claims?.sub;
+  if (!req.isAuthenticated() || !userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const dbUser = await authStorage.getUser(user.claims.sub);
+  const dbUser = await authStorage.getUser(userId);
   if (!dbUser) {
     return res.status(404).json({ message: "User not found" });
   }
@@ -38,10 +39,11 @@ const requirePremium: RequestHandler = async (req, res, next) => {
 
 const isAdmin: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
-  if (!req.isAuthenticated() || !user?.claims?.sub) {
+  const userId = user?.id ?? user?.claims?.sub;
+  if (!req.isAuthenticated() || !userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const dbUser = await authStorage.getUser(user.claims.sub);
+  const dbUser = await authStorage.getUser(userId);
   if (!dbUser || dbUser.role !== "admin") {
     return res.status(403).json({ message: "Admin access required" });
   }
@@ -66,9 +68,9 @@ export async function registerRoutes(
       if (accountType === "provider" && (!companyName || typeof companyName !== "string" || companyName.trim().length < 2)) {
         return res.status(400).json({ message: "companyName required for fleet managers" });
       }
-      const userId = req.user.claims.sub;
+      const userId = (req.user.id ?? req.user.claims?.sub);
       const user = await authStorage.updateAccountType(userId, accountType, accountType === "provider" ? companyName?.trim() : undefined);
-      res.json(user);
+      res.json(sanitizeUser(user));
     } catch (error) {
       res.status(500).json({ message: "Failed to update account type" });
     }
@@ -81,9 +83,9 @@ export async function registerRoutes(
       if (!phoneNumber || typeof phoneNumber !== "string" || phoneNumber.trim().length < 6) {
         return res.status(400).json({ message: "Valid phone number required" });
       }
-      const userId = req.user.claims.sub;
+      const userId = (req.user.id ?? req.user.claims?.sub);
       const user = await authStorage.updateUserPhone(userId, phoneNumber.trim());
-      res.json(user);
+      res.json(sanitizeUser(user));
     } catch (error) {
       res.status(500).json({ message: "Failed to update phone number" });
     }
@@ -91,7 +93,7 @@ export async function registerRoutes(
 
   // === Notification Preferences ===
   app.get("/api/notification-preferences", isAuthenticated, requirePremium, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = (req.user.id ?? req.user.claims?.sub);
     const prefs = await storage.getNotificationPreferences(userId);
     res.json(prefs || {
       userId,
@@ -106,7 +108,7 @@ export async function registerRoutes(
 
   app.put("/api/notification-preferences", isAuthenticated, requirePremium, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user.id ?? req.user.claims?.sub);
       const { airportInfo, events, hotZones, relocate, bestEarnings, frequency } = req.body;
       const validFrequencies = ["realtime", "hourly", "daily", "off"];
       if (frequency && !validFrequencies.includes(frequency)) {
@@ -124,18 +126,18 @@ export async function registerRoutes(
   // === Admin Routes ===
   app.get("/api/admin/users", isAuthenticated, isAdmin, async (_req, res) => {
     const users = await authStorage.getAllUsers();
-    res.json(users);
+    res.json(users.map(sanitizeUser));
   });
 
   app.get("/api/admin/users/pending", isAuthenticated, isAdmin, async (_req, res) => {
     const pending = await authStorage.getPendingUsers();
-    res.json(pending);
+    res.json(pending.map(sanitizeUser));
   });
 
   app.post("/api/admin/users/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const user = await authStorage.updateUserStatus(req.params.id, "approved");
-      res.json(user);
+      res.json(sanitizeUser(user));
     } catch (err) {
       res.status(500).json({ message: "Failed to approve user" });
     }
@@ -144,7 +146,7 @@ export async function registerRoutes(
   app.post("/api/admin/users/:id/reject", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const user = await authStorage.updateUserStatus(req.params.id, "rejected");
-      res.json(user);
+      res.json(sanitizeUser(user));
     } catch (err) {
       res.status(500).json({ message: "Failed to reject user" });
     }
@@ -156,7 +158,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/heartbeat", isAuthenticated, async (req: any, res) => {
-    const userId = req.user?.claims?.sub;
+    const userId = (req.user?.id ?? req.user?.claims?.sub);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const lat = typeof req.body?.lat === "number" ? req.body.lat : undefined;
     const lng = typeof req.body?.lng === "number" ? req.body.lng : undefined;
@@ -188,7 +190,7 @@ export async function registerRoutes(
         }
         if (minDist > 5) nearestZone = "Outside Kraków";
       }
-      return { ...u, nearestZone };
+      return { ...sanitizeUser(u), nearestZone };
     }).sort((a, b) => new Date(b.lastSeenAt!).getTime() - new Date(a.lastSeenAt!).getTime());
 
     res.json(result);
@@ -197,7 +199,7 @@ export async function registerRoutes(
   // === Subscription & Payments ===
   app.get("/api/subscription", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user.id ?? req.user.claims?.sub);
       const dbUser = await authStorage.getUser(userId);
       if (!dbUser) return res.status(404).json({ message: "User not found" });
       const sub = getSubscriptionStatus(dbUser);
@@ -215,7 +217,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Valid 6-digit BLIK code required" });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = (req.user.id ?? req.user.claims?.sub);
       const dbUser = await authStorage.getUser(userId);
       if (!dbUser) return res.status(404).json({ message: "User not found" });
 
@@ -319,7 +321,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Valid payment method required: card, transfer, or all" });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = (req.user.id ?? req.user.claims?.sub);
       const dbUser = await authStorage.getUser(userId);
       if (!dbUser) return res.status(404).json({ message: "User not found" });
 
@@ -358,7 +360,7 @@ export async function registerRoutes(
       if (!payment) {
         return res.status(404).json({ message: "Payment not found" });
       }
-      if (payment.userId !== req.user.claims.sub) {
+      if (payment.userId !== (req.user.id ?? req.user.claims?.sub)) {
         return res.status(403).json({ message: "Forbidden" });
       }
       res.json({
@@ -390,7 +392,7 @@ export async function registerRoutes(
   // PayPal status polling endpoint
   app.get("/api/subscription/paypal/status", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user.id ?? req.user.claims?.sub);
       const dbUser = await authStorage.getUser(userId);
       if (!dbUser) return res.status(404).json({ message: "User not found" });
       
@@ -406,7 +408,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/payments", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = (req.user.id ?? req.user.claims?.sub);
     const userPayments = await storage.getPayments(userId);
     res.json(userPayments);
   });
@@ -465,12 +467,12 @@ export async function registerRoutes(
 
   // === Earnings ===
   app.get(api.earnings.list.path, isAuthenticated, requirePremium, async (req, res) => {
-    const earnings = await storage.getEarnings((req.user as any).claims.sub);
+    const earnings = await storage.getEarnings(((req.user as any).id ?? (req.user as any).claims?.sub));
     res.json(earnings);
   });
 
   app.get(api.earnings.stats.path, isAuthenticated, requirePremium, async (req, res) => {
-    const stats = await storage.getEarningsStats((req.user as any).claims.sub);
+    const stats = await storage.getEarningsStats(((req.user as any).id ?? (req.user as any).claims?.sub));
     res.json({
         ...stats,
         topZones: []
@@ -482,7 +484,7 @@ export async function registerRoutes(
   app.post(api.earnings.upload.path, isAuthenticated, requirePremium, upload.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-    const userId = (req.user as any).claims.sub;
+    const userId = ((req.user as any).id ?? (req.user as any).claims?.sub);
 
     try {
       let csvText = req.file.buffer.toString("utf-8");

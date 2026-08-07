@@ -4,6 +4,7 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import { setupLocalAuth } from "./localAuth";
 
 const ADMIN_EMAIL = "obeydefiance@icloud.com";
 
@@ -99,6 +100,9 @@ export async function setupAuth(app: Express) {
       done(err as Error);
     }
   });
+
+  // Email + password registration/login (passport-local)
+  setupLocalAuth(app);
 
   // ── Routes ─────────────────────────────────────────────────────────────────
 
