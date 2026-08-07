@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Map, ArrowRight, ShieldCheck, Zap, UserPlus } from "lucide-react";
+import { Map, ArrowRight, ShieldCheck, Zap, Users } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Login() {
@@ -48,10 +48,10 @@ export default function Login() {
           </div>
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
-              <UserPlus className="w-5 h-5 text-sky-400" />
+              <Users className="w-5 h-5 text-sky-400" />
             </div>
             <h3 className="font-semibold text-lg">Dołącz bez rejestracji</h3>
-            <p className="text-sm text-muted-foreground">Zaloguj się kontem Replit i od razu korzystaj z pełnej wersji.</p>
+            <p className="text-sm text-muted-foreground">Zaloguj się kontem Google i od razu korzystaj z pełnej wersji.</p>
           </div>
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
@@ -81,7 +81,7 @@ export default function Login() {
             </div>
             <h3 className="text-2xl font-bold">Dołącz do PlusPuls</h3>
             <p className="text-muted-foreground text-sm">
-              Platforma dla kierowców w Polsce. Zaloguj się kontem Replit i zacznij zarabiać więcej.
+              Platforma dla kierowców w Polsce. Zaloguj się kontem Google i zacznij zarabiać więcej.
             </p>
           </div>
 
@@ -130,7 +130,7 @@ export default function Login() {
               </div>
 
               <p className="text-xs text-center text-muted-foreground">
-                Masz już konto? Wejdziesz od razu do panelu. Nowi użytkownicy są zatwierdzani automatycznie.
+                Masz już konto Google? Wejdziesz od razu do panelu — bez czekania na zatwierdzenie.
               </p>
             </div>
           </Card>
