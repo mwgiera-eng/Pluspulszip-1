@@ -18,11 +18,19 @@ interface RoadTrafficResponse {
   baseLevel: number;
 }
 
-// Dot color adapts to congestion: free-flow green → busy amber → jammed red
-function dotColor(intensity: number): string {
-  if (intensity >= 0.75) return '#FF5470'; // jammed
-  if (intensity >= 0.5) return '#FFB547';  // busy
-  return '#2EE6A6';                        // flowing
+// Dot color: green almost everywhere; orange/red reserved for the few genuinely congested roads.
+// Thresholds are percentile-based per data refresh (top ~5% red, next ~10% orange) with an
+// absolute floor so quiet hours stay fully green.
+function makeDotColor(intensities: number[]): (intensity: number) => string {
+  const sorted = intensities.slice().sort((a, b) => a - b);
+  const pct = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] ?? 1;
+  const redAt = Math.max(0.9, pct(0.95));
+  const orangeAt = Math.max(0.75, pct(0.85));
+  return (intensity: number) => {
+    if (intensity >= redAt) return '#FF5470';   // jammed — top of the distribution only
+    if (intensity >= orangeAt) return '#FFB547'; // heavy
+    return '#2EE6A6';                            // flowing (default green)
+  };
 }
 
 interface PreparedRoad {
@@ -59,6 +67,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
   // Prepare road geometry data whenever new traffic data arrives
   useEffect(() => {
     if (!data) return;
+    const dotColor = makeDotColor(data.roads.map((r) => r.intensity));
     preparedRef.current = data.roads
       .filter((r) => r.geometry.length >= 2)
       .map((r) => {
