@@ -436,7 +436,7 @@ export async function registerRoutes(
     res.json(zone);
   });
 
-  app.post(api.zones.create.path, async (req, res) => {
+  app.post(api.zones.create.path, isAuthenticated, isAdmin, async (req, res) => {
     try {
       const input = insertZoneSchema.parse(req.body);
       const zone = await storage.createZone(input);
@@ -450,7 +450,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.zones.update.path, async (req, res) => {
+  app.put(api.zones.update.path, isAuthenticated, isAdmin, async (req, res) => {
     try {
       const input = insertZoneSchema.partial().parse(req.body);
       const zone = await storage.updateZone(Number(req.params.id), input);
@@ -460,7 +460,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.zones.delete.path, async (req, res) => {
+  app.delete(api.zones.delete.path, isAuthenticated, isAdmin, async (req, res) => {
     await storage.deleteZone(Number(req.params.id));
     res.status(204).send();
   });
@@ -533,7 +533,7 @@ export async function registerRoutes(
     res.json(pois);
   });
 
-  app.post(api.pois.create.path, async (req, res) => {
+  app.post(api.pois.create.path, isAuthenticated, isAdmin, async (req, res) => {
     try {
       const input = insertPoiSchema.parse(req.body);
       const poi = await storage.createPoi(input);
@@ -544,7 +544,7 @@ export async function registerRoutes(
   });
 
   // === Recommendations ===
-  app.get(api.recommendations.list.path, async (req, res) => {
+  app.get(api.recommendations.list.path, isAuthenticated, async (req, res) => {
     const [allZones, allPois] = await Promise.all([
       storage.getZones(),
       storage.getPois(),
@@ -559,7 +559,7 @@ export async function registerRoutes(
     res.json(saved);
   });
 
-  app.post(api.recommendations.generate.path, async (req, res) => {
+  app.post(api.recommendations.generate.path, isAuthenticated, async (req, res) => {
     const [allZones, allPois] = await Promise.all([
       storage.getZones(),
       storage.getPois(),
@@ -644,7 +644,7 @@ export async function registerRoutes(
     });
   });
 
-  app.post("/api/krakow-events/refresh", async (_req, res) => {
+  app.post("/api/krakow-events/refresh", isAuthenticated, isAdmin, async (_req, res) => {
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     try {
       const beforeCount = getAllCachedEvents().length;
