@@ -75,10 +75,7 @@
   z-index: 0;
 }
 
-/* Dark Map Tiles Filter */
-.leaflet-tile-pane {
-  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-}
+/* Light map tiles — no filter, CartoDB Positron is already light with clear roads */
 
 /* Remove Leaflet attribution prefix for cleaner look in app (keep copyright) */
 .leaflet-control-attribution a:first-child {
