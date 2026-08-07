@@ -311,13 +311,55 @@ function getHexagonPoints(
   return points;
 }
 
+/** Approximate distance in metres between two lat/lng points */
+function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const metersPerLat = 111_000;
+  const metersPerLng = 111_000 * Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
+  const dy = (lat2 - lat1) * metersPerLat;
+  const dx = (lng2 - lng1) * metersPerLng;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 function ProfitHeatLayer({ heatData }: { heatData: ZoneProfitHeatResponse }) {
+  // Cap each hexagon so it never overlaps a neighbour: max radius = half the
+  // distance to the nearest other zone centre (with a small margin).
+  const zones = heatData.zones;
+  const cappedRadius = (zone: ZoneProfitHeatData): number => {
+    let maxR = zone.radius * 0.72;
+    for (const other of zones) {
+      if (other.zoneId === zone.zoneId) continue;
+      const d = distanceMeters(zone.lat, zone.lng, other.lat, other.lng);
+      maxR = Math.min(maxR, (d / 2) * 0.92);
+    }
+    return Math.max(Math.round(maxR), 150);
+  };
+
   return (
     <>
-      {heatData.zones.map((zone) => {
+      {/* Glow layer first (underneath): soft halo filling gaps between hexes */}
+      {zones.filter(z => z.profitScore >= 30).map((zone) => {
+        const color = getHeatColor(zone.profitScore);
+        const r = cappedRadius(zone);
+        return (
+          <Polygon
+            key={`glow-${zone.zoneId}`}
+            positions={getHexagonPoints(zone.lat, zone.lng, Math.round(r * 1.45))}
+            pathOptions={{
+              color: color,
+              fillColor: color,
+              fillOpacity: 0.06 + (zone.profitScore / 100) * 0.12,
+              weight: 0,
+              opacity: 0,
+            }}
+            interactive={false}
+          />
+        );
+      })}
+
+      {zones.map((zone) => {
         const color = getHeatColor(zone.profitScore);
         const opacity = getHeatOpacity(zone.profitScore);
-        const hexRadius = Math.round(zone.radius * 0.72); // slightly smaller than circle radius
+        const hexRadius = cappedRadius(zone);
         const hexPoints = getHexagonPoints(zone.lat, zone.lng, hexRadius);
         const isHot = zone.profitScore >= 70;
 
@@ -329,8 +371,8 @@ function ProfitHeatLayer({ heatData }: { heatData: ZoneProfitHeatResponse }) {
               color: color,
               fillColor: color,
               fillOpacity: opacity,
-              weight: isHot ? 2 : 1,
-              opacity: isHot ? 0.9 : 0.5,
+              weight: 2.5,
+              opacity: isHot ? 1 : 0.85,
             }}
           >
             <Tooltip
