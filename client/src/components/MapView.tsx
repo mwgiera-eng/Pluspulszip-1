@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Circle, Marker, Popup, useMap, CircleMarker, Polyline, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker, Popup, useMap, CircleMarker, Polyline, Tooltip, Polygon } from 'react-leaflet';
 import { useMapData } from '@/hooks/use-map-data';
 import { useQuery } from '@tanstack/react-query';
 import L from 'leaflet';
@@ -280,16 +280,35 @@ const TIME_OFFSETS = [
 ];
 
 function getHeatColor(score: number): string {
-  if (score >= 85) return '#ffffff';
-  if (score >= 70) return '#ef4444';
-  if (score >= 50) return '#f97316';
-  if (score >= 30) return '#eab308';
-  if (score >= 15) return '#22d3ee';
-  return '#3b82f6';
+  if (score >= 85) return '#4ade80'; // bright lime-green — hottest
+  if (score >= 70) return '#22c55e'; // green
+  if (score >= 50) return '#f97316'; // orange
+  if (score >= 30) return '#ef4444'; // red
+  if (score >= 15) return '#818cf8'; // indigo
+  return '#3b82f6';                  // cold blue
 }
 
 function getHeatOpacity(score: number): number {
-  return 0.15 + (score / 100) * 0.45;
+  return 0.25 + (score / 100) * 0.5;
+}
+
+/** Convert a lat/lng center + radius in metres → 6 flat-top hexagon vertices */
+function getHexagonPoints(
+  centerLat: number,
+  centerLng: number,
+  radiusM: number,
+): [number, number][] {
+  const metersPerLat = 111_000;
+  const metersPerLng = 111_000 * Math.cos((centerLat * Math.PI) / 180);
+  const points: [number, number][] = [];
+  for (let i = 0; i < 6; i++) {
+    const angleDeg = 60 * i; // flat-top: first vertex points right
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const lat = centerLat + (radiusM * Math.sin(angleRad)) / metersPerLat;
+    const lng = centerLng + (radiusM * Math.cos(angleRad)) / metersPerLng;
+    points.push([lat, lng]);
+  }
+  return points;
 }
 
 function ProfitHeatLayer({ heatData }: { heatData: ZoneProfitHeatResponse }) {
@@ -298,17 +317,20 @@ function ProfitHeatLayer({ heatData }: { heatData: ZoneProfitHeatResponse }) {
       {heatData.zones.map((zone) => {
         const color = getHeatColor(zone.profitScore);
         const opacity = getHeatOpacity(zone.profitScore);
+        const hexRadius = Math.round(zone.radius * 0.72); // slightly smaller than circle radius
+        const hexPoints = getHexagonPoints(zone.lat, zone.lng, hexRadius);
+        const isHot = zone.profitScore >= 70;
+
         return (
-          <Circle
+          <Polygon
             key={`heat-${zone.zoneId}`}
-            center={[zone.lat, zone.lng]}
-            radius={Math.round(zone.radius * 0.9)}
+            positions={hexPoints}
             pathOptions={{
               color: color,
               fillColor: color,
               fillOpacity: opacity,
-              weight: zone.profitScore >= 70 ? 2 : 1,
-              opacity: zone.profitScore >= 70 ? 0.8 : 0.4,
+              weight: isHot ? 2 : 1,
+              opacity: isHot ? 0.9 : 0.5,
             }}
           >
             <Tooltip
@@ -316,7 +338,7 @@ function ProfitHeatLayer({ heatData }: { heatData: ZoneProfitHeatResponse }) {
               direction="center"
               className="heat-score-tooltip"
             >
-              <span className="text-[10px] font-bold" style={{ color: zone.profitScore >= 50 ? '#fff' : '#e2e8f0' }}>
+              <span className="text-[10px] font-bold" style={{ color: zone.profitScore >= 30 ? '#fff' : '#e2e8f0' }}>
                 {zone.profitScore}
               </span>
             </Tooltip>
@@ -336,7 +358,7 @@ function ProfitHeatLayer({ heatData }: { heatData: ZoneProfitHeatResponse }) {
                 <p className="text-[10px] text-gray-400 mt-1 capitalize">{zone.demandLevel} demand</p>
               </div>
             </Popup>
-          </Circle>
+          </Polygon>
         );
       })}
     </>
@@ -505,27 +527,27 @@ export function MapView({ driverPosition }: MapViewProps) {
         <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg p-1.5">
           <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[9px]">
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full" style={{ background: '#ffffff', boxShadow: '0 0 4px #fff' }} />
+              <div className="w-2 h-2 rounded-sm" style={{ background: '#4ade80', boxShadow: '0 0 4px #4ade8088' }} />
               <span>Hot 85+</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-red-500" />
+              <div className="w-2 h-2 rounded-sm bg-green-500" />
               <span>70+</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-orange-500" />
+              <div className="w-2 h-2 rounded-sm bg-orange-500" />
               <span>50+</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+              <div className="w-2 h-2 rounded-sm bg-red-500" />
               <span>30+</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-cyan-400" />
+              <div className="w-2 h-2 rounded-sm bg-indigo-400" />
               <span>15+</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              <div className="w-2 h-2 rounded-sm bg-blue-500" />
               <span>Cold</span>
             </div>
             {hasPurple && (
