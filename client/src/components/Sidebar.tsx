@@ -65,8 +65,8 @@ export function Sidebar() {
                 onClick={() => setOpen(false)}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group cursor-pointer",
-                  isActive 
-                    ? "bg-primary text-primary-foreground shadow-[0_0_24px_hsl(159_79%_54%_/_0.38)]" 
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-[0_0_24px_hsl(159_79%_54%_/_0.38)]"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   isLocked && "opacity-60"
                 )}
@@ -92,8 +92,8 @@ export function Sidebar() {
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full justify-start gap-2 border-destructive/20 text-destructive"
               onClick={() => logout()}
               data-testid="button-logout"
@@ -103,8 +103,8 @@ export function Sidebar() {
             </Button>
           </>
         ) : (
-          <Button 
-            variant="default" 
+          <Button
+            variant="default"
             className="w-full justify-start gap-2"
             onClick={() => window.location.href = "/api/login"}
             data-testid="button-login"

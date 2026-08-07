@@ -413,25 +413,82 @@ function getHexGridColor(score: number): { color: string; opacity: number } {
   return { color: '#A7F3D0', opacity: 0.2 };
 }
 
-function HexGridLayer({ cells }: { cells: HexHeatCell[] }) {
+const HEX_GRID_MIN_ZOOM = 12;
+
+function HexGridLayer({
+  hoursAhead,
+  minutesAhead,
+  live,
+}: {
+  hoursAhead: number;
+  minutesAhead: number;
+  live: boolean;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(() => map.getZoom());
+
+  useEffect(() => {
+    const onZoom = () => setZoom(map.getZoom());
+    map.on('zoomend', onZoom);
+    return () => {
+      map.off('zoomend', onZoom);
+    };
+  }, [map]);
+
+  const visible = zoom >= HEX_GRID_MIN_ZOOM;
+
+  // Fetch only while the grid is actually visible — below the zoom cutoff
+  // phones would pay network + parse cost for cells that never render.
+  const { data: hexHeat } = useQuery<HexHeatResponse>({
+    queryKey: ['/api/hex-heat', hoursAhead, minutesAhead],
+    queryFn: async () => {
+      const res = await fetch(`/api/hex-heat?hoursAhead=${hoursAhead}&minutesAhead=${minutesAhead}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch hex heat');
+      return res.json();
+    },
+    refetchInterval: live ? 60000 : undefined,
+    placeholderData: (prev) => prev,
+    enabled: visible,
+  });
+
+  const cells = hexHeat?.cells ?? [];
+
+  // Merge same-color cells into ONE multi-polygon leaflet layer per color
+  // bucket (5 layers total instead of 200-600) — massively cheaper to
+  // render and to re-project while panning/zooming on low-end phones.
+  const buckets = useMemo(() => {
+    const byColor = new Map<string, { color: string; opacity: number; rings: [number, number][][] }>();
+    for (const c of cells) {
+      const { color, opacity } = getHexGridColor(c.score);
+      const key = `${color}-${opacity}`;
+      let bucket = byColor.get(key);
+      if (!bucket) {
+        bucket = { color, opacity, rings: [] };
+        byColor.set(key, bucket);
+      }
+      bucket.rings.push(getHexagonPoints(c.lat, c.lng, c.radius));
+    }
+    return Array.from(byColor.entries());
+  }, [cells]);
+
+  if (!visible) return null;
+
   return (
     <>
-      {cells.map((c) => {
-        const { color, opacity } = getHexGridColor(c.score);
-        return (
-          <Polygon
-            key={`hex-${c.id}`}
-            positions={getHexagonPoints(c.lat, c.lng, c.radius)}
-            pathOptions={{
-              color,
-              fillColor: color,
-              fillOpacity: opacity,
-              weight: 1,
-              opacity: Math.min(1, opacity + 0.15),
-            }}
-          />
-        );
-      })}
+      {buckets.map(([key, b]) => (
+        <Polygon
+          key={`hexbucket-${key}`}
+          positions={b.rings}
+          pathOptions={{
+            color: b.color,
+            fillColor: b.color,
+            fillOpacity: b.opacity,
+            weight: 1,
+            opacity: Math.min(1, b.opacity + 0.15),
+            interactive: false,
+          }}
+        />
+      ))}
     </>
   );
 }
@@ -453,17 +510,6 @@ export function MapView({ driverPosition }: MapViewProps) {
     queryFn: async () => {
       const res = await fetch(`/api/zone-profit-heat?hoursAhead=${selectedOffset.hours}&minutesAhead=${selectedOffset.minutes}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch heat data');
-      return res.json();
-    },
-    refetchInterval: selectedTimeIdx === 0 ? 60000 : undefined,
-    placeholderData: (prev) => prev,
-  });
-
-  const { data: hexHeat } = useQuery<HexHeatResponse>({
-    queryKey: ['/api/hex-heat', selectedOffset.hours, selectedOffset.minutes],
-    queryFn: async () => {
-      const res = await fetch(`/api/hex-heat?hoursAhead=${selectedOffset.hours}&minutesAhead=${selectedOffset.minutes}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch hex heat');
       return res.json();
     },
     refetchInterval: selectedTimeIdx === 0 ? 60000 : undefined,
@@ -547,7 +593,11 @@ export function MapView({ driverPosition }: MapViewProps) {
 
         <MapController center={KRAKOW_COORDS} />
 
-        {hexHeat && <HexGridLayer cells={hexHeat.cells} />}
+        <HexGridLayer
+          hoursAhead={selectedOffset.hours}
+          minutesAhead={selectedOffset.minutes}
+          live={selectedTimeIdx === 0}
+        />
         {heatData && <ProfitHeatLayer heatData={heatData} />}
 
         <TrafficLayer enabled={showTraffic} />

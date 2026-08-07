@@ -11,6 +11,10 @@ interface RoadSegment {
   intensity: number;
 }
 
+const IS_MOBILE =
+  typeof window !== 'undefined' &&
+  (window.matchMedia?.('(pointer: coarse)').matches ||
+    (navigator.hardwareConcurrency ?? 8) <= 4);
 interface RoadTrafficResponse {
   roads: RoadSegment[];
   generatedAt: string;
@@ -77,8 +81,9 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
           cumLen.push(cumLen[i - 1] + latlngs[i - 1].distanceTo(latlngs[i]));
         }
         const totalLen = cumLen[cumLen.length - 1];
-        // dot density: 1 dot per ~250m at full intensity, min 1
-        const dotCount = Math.max(1, Math.round((totalLen / 250) * r.intensity));
+        // dot density: 1 dot per ~250m at full intensity (400m on mobile), min 1
+        const dotSpacing = IS_MOBILE ? 400 : 250;
+        const dotCount = Math.max(1, Math.round((totalLen / dotSpacing) * r.intensity));
         // heavier traffic = slower dots (congestion): 14 m/s free flow → 3 m/s jammed
         const speed = 14 - 11 * r.intensity;
         const phases = Array.from({ length: dotCount }, (_, i) =>
@@ -114,10 +119,14 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
 
     const ctx = canvas.getContext('2d')!;
 
+    // Cap backing-store resolution on mobile: 3x DPR canvases burn fill-rate
+    // for dots that are ~2px anyway.
+    const dpr = IS_MOBILE ? Math.min(devicePixelRatio, 1.5) : devicePixelRatio;
+
     const resize = () => {
       const size = map.getSize();
-      canvas.width = size.x * devicePixelRatio;
-      canvas.height = size.y * devicePixelRatio;
+      canvas.width = size.x * dpr;
+      canvas.height = size.y * dpr;
       canvas.style.width = `${size.x}px`;
       canvas.style.height = `${size.y}px`;
     };
@@ -140,7 +149,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
 
     const start = performance.now();
     const boundsPad = 40; // px margin for per-dot culling
-    const FRAME_INTERVAL = 1000 / 30; // cap at 30 fps
+    const FRAME_INTERVAL = IS_MOBILE ? 1000 / 20 : 1000 / 30; // 20 fps on mobile, 30 desktop
     let lastFrame = 0;
 
     // Viewport-level road culling, refreshed only when the map moves
@@ -161,7 +170,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
       lastFrame = now;
 
       const elapsed = (now - start) / 1000; // seconds
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const size = map.getSize();
 

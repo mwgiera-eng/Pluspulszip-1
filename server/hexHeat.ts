@@ -66,7 +66,31 @@ function distM(lat1: number, lng1: number, lat2: number, lng2: number): number {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+// Per-minute response cache: scores only change with the minute-level drift
+// term, so recomputing the full grid + zone-distance scoring on every request
+// is wasted CPU. Keyed by offset + radius + current minute.
+const heatCache = new Map<string, ReturnType<typeof computeHexHeat>>();
+
 export function getHexHeat(
+  allZones: Zone[],
+  allPois: Poi[],
+  hoursAhead = 0,
+  minutesAhead = 0,
+  radiusM = 350,
+) {
+  const tMin = Math.floor(Date.now() / 60000);
+  const key = `${hoursAhead}:${minutesAhead}:${radiusM}:${tMin}`;
+  const cached = heatCache.get(key);
+  if (cached) return cached;
+
+  const result = computeHexHeat(allZones, allPois, hoursAhead, minutesAhead, radiusM);
+  // keep the cache tiny — drop entries from previous minutes
+  if (heatCache.size > 32) heatCache.clear();
+  heatCache.set(key, result);
+  return result;
+}
+
+function computeHexHeat(
   allZones: Zone[],
   allPois: Poi[],
   hoursAhead = 0,
