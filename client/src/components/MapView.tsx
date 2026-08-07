@@ -6,6 +6,7 @@ import L from 'leaflet';
 import { Loader2, MapPin, Star, Clock, Flame } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import type { GeoPosition } from '@/hooks/use-geolocation';
+import { TrafficLayer } from './TrafficLayer';
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -415,6 +416,7 @@ export function MapView({ driverPosition }: MapViewProps) {
   const { data, isLoading, error } = useMapData();
   const [routeGeometries, setRouteGeometries] = useState<RouteGeometryData[]>([]);
   const [selectedTimeIdx, setSelectedTimeIdx] = useState(0);
+  const [showTraffic, setShowTraffic] = useState(true);
   const refreshRef = useRef<NodeJS.Timeout | null>(null);
 
   const selectedOffset = TIME_OFFSETS[selectedTimeIdx];
@@ -507,6 +509,8 @@ export function MapView({ driverPosition }: MapViewProps) {
 
         {heatData && <ProfitHeatLayer heatData={heatData} />}
 
+        <TrafficLayer enabled={showTraffic} />
+
         {data.pois.map((poi) => (
           <Marker 
             key={poi.id} 
@@ -564,6 +568,17 @@ export function MapView({ driverPosition }: MapViewProps) {
               {heatData.transitionNarrative}
             </p>
           )}
+          <button
+            onClick={() => setShowTraffic(v => !v)}
+            className={`mt-1.5 w-full px-2 py-1 rounded text-[10px] font-medium transition-all ${
+              showTraffic
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+            }`}
+            data-testid="btn-toggle-traffic"
+          >
+            {showTraffic ? '● Ruch drogowy: ON' : '○ Ruch drogowy: OFF'}
+          </button>
         </div>
 
         <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg p-1.5">

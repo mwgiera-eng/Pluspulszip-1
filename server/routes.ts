@@ -12,6 +12,7 @@ import { generateRecommendations, getArrivalsWindowEstimate, generateLocationAwa
 import { getSubscriptionStatus, activateSubscription } from "./subscriptionService";
 import { registerTransaction, processBlikPayment, verifyWebhookSignature, verifyTransaction, isSandboxMode, type PaymentMethod } from "./przelewy24Service";
 import { getPopularRoutes } from "./popularRoutes";
+import { getRoadTraffic } from "./roadTraffic";
 import { fetchMultipleRouteGeometries } from "./osrmService";
 import { startEventsRefreshLoop, getActiveEvents, refreshEvents, getEventsCacheMeta, getAllCachedEvents } from "./krakowEvents";
 import { generateDayPlan } from "./dayPlanner";
@@ -794,6 +795,17 @@ export async function registerRoutes(
 
     const heat = getZoneProfitHeat(allZones, allPois, hoursAhead, minutesAhead);
     res.json(heat);
+  });
+
+  // === Road Traffic Simulation (OSM geometries + simulated intensity) ===
+  app.get("/api/road-traffic", async (_req, res) => {
+    try {
+      const data = await getRoadTraffic();
+      res.setHeader("Cache-Control", "public, max-age=60");
+      res.json(data);
+    } catch (err) {
+      res.status(503).json({ error: "Road data unavailable", detail: String(err) });
+    }
   });
 
   // === Popular Routes ===
