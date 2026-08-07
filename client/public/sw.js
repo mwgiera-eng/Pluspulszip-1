@@ -1,6 +1,7 @@
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const APP_SHELL_CACHE = `shiftoptima-shell-${CACHE_VERSION}`;
 const API_CACHE = `shiftoptima-api-${CACHE_VERSION}`;
+const FONT_CACHE = `shiftoptima-fonts-${CACHE_VERSION}`;
 
 const APP_SHELL_ASSETS = [
   "/",
@@ -15,6 +16,7 @@ const APP_SHELL_ASSETS = [
   "/favicon.png",
 ];
 
+// ── Install: precache the app shell ──────────────────────────────────────────
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(APP_SHELL_CACHE).then((cache) =>
@@ -29,6 +31,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
+// ── Activate: prune stale caches ─────────────────────────────────────────────
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
@@ -36,7 +39,12 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => k !== APP_SHELL_CACHE && k !== API_CACHE)
+            .filter(
+              (k) =>
+                k !== APP_SHELL_CACHE &&
+                k !== API_CACHE &&
+                k !== FONT_CACHE
+            )
             .map((k) => caches.delete(k))
         )
       )
@@ -44,25 +52,69 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// ── Fetch router ─────────────────────────────────────────────────────────────
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   if (request.method !== "GET") return;
 
+  // Google Fonts — stale-while-revalidate
+  if (
+    url.hostname === "fonts.googleapis.com" ||
+    url.hostname === "fonts.gstatic.com"
+  ) {
+    event.respondWith(staleWhileRevalidateFont(request));
+    return;
+  }
+
+  // API calls — network-first, fall back to cached response
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(networkFirstApi(request));
     return;
   }
 
+  // Page navigations — cache-first (SPA shell), background network update
   if (request.mode === "navigate") {
     event.respondWith(navigationHandler(request));
     return;
   }
 
+  // Static assets — cache-first, populate on miss
   event.respondWith(cacheFirstStatic(request));
 });
 
+// ── Strategy: SPA navigation (cache-first + background revalidate) ────────────
+// Serves the cached app shell immediately so the app loads instantly offline.
+// Fetches a fresh copy in the background and updates the cache for next time.
+async function navigationHandler(request) {
+  const cache = await caches.open(APP_SHELL_CACHE);
+  const cached = await cache.match("/");
+
+  // Kick off a background network fetch regardless
+  const networkPromise = fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        cache.put("/", response.clone());
+      }
+      return response;
+    })
+    .catch(() => null);
+
+  // Return cached shell immediately if available; otherwise wait for network
+  if (cached) {
+    return cached;
+  }
+
+  const networkResponse = await networkPromise;
+  if (networkResponse) return networkResponse;
+
+  // Both failed — show offline page
+  const offline = await cache.match("/offline.html");
+  return offline || new Response("Offline", { status: 503 });
+}
+
+// ── Strategy: network-first for API ──────────────────────────────────────────
 async function networkFirstApi(request) {
   const cache = await caches.open(API_CACHE);
   try {
@@ -73,24 +125,17 @@ async function networkFirstApi(request) {
     return response;
   } catch {
     const cached = await cache.match(request);
-    return cached || new Response(JSON.stringify({ error: "Offline", offline: true }), {
-      status: 503,
-      headers: { "Content-Type": "application/json" },
-    });
+    return (
+      cached ||
+      new Response(JSON.stringify({ error: "Offline", offline: true }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
   }
 }
 
-async function navigationHandler(request) {
-  try {
-    const response = await fetch(request);
-    return response;
-  } catch {
-    const cache = await caches.open(APP_SHELL_CACHE);
-    const cached = await cache.match("/") || await cache.match("/offline.html");
-    return cached || new Response("Offline", { status: 503 });
-  }
-}
-
+// ── Strategy: cache-first for static assets ───────────────────────────────────
 async function cacheFirstStatic(request) {
   const cache = await caches.open(APP_SHELL_CACHE);
   const cached = await cache.match(request);
@@ -104,4 +149,21 @@ async function cacheFirstStatic(request) {
   } catch {
     return new Response("Asset unavailable offline", { status: 503 });
   }
+}
+
+// ── Strategy: stale-while-revalidate for Google Fonts ────────────────────────
+// Serves the cached font immediately; fetches a fresh copy in the background.
+// This keeps fonts available offline after the first load.
+async function staleWhileRevalidateFont(request) {
+  const cache = await caches.open(FONT_CACHE);
+  const cached = await cache.match(request);
+
+  const networkFetch = fetch(request)
+    .then((response) => {
+      if (response.ok) cache.put(request, response.clone());
+      return response;
+    })
+    .catch(() => null);
+
+  return cached || (await networkFetch) || new Response("Font unavailable offline", { status: 503 });
 }
