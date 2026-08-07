@@ -30,7 +30,7 @@ export function StatsCard({
 
   return (
     <div className={cn(
-      "bg-card rounded-2xl p-3 md:p-5 border border-border",
+      "bg-card rounded-2xl p-3 md:p-5 border border-border neon-surface transition-all duration-300",
       className
     )}>
       <div className="flex items-start justify-between gap-2">
@@ -44,8 +44,8 @@ export function StatsCard({
             <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
           )}
         </div>
-        <div className="p-2 md:p-2.5 rounded-xl bg-secondary shrink-0">
-          <Icon className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+        <div className={cn("p-2 md:p-2.5 rounded-xl bg-secondary shrink-0", isMoney && "bg-primary/10 shadow-[0_0_18px_hsl(159_79%_54%_/_0.16)]")}>
+          <Icon className={cn("w-4 h-4 md:w-5 md:h-5", isMoney ? "text-primary" : "text-muted-foreground")} />
         </div>
       </div>
 

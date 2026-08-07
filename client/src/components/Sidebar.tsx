@@ -26,10 +26,10 @@ export function Sidebar() {
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-border/10">
+      <div className="p-6 border-b border-primary/10 bg-[radial-gradient(circle_at_0%_0%,hsl(159_79%_54%_/_0.10),transparent_13rem)]">
         <div className="flex items-center gap-2.5">
           {/* Waveform / pulse logo icon */}
-          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-[0_0_22px_hsl(159_79%_54%_/_0.55)]">
             <svg viewBox="0 0 20 20" fill="none" className="w-4.5 h-4.5">
               <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
               <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="#0A0D14"/>
@@ -66,7 +66,7 @@ export function Sidebar() {
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group cursor-pointer",
                   isActive 
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
+                    ? "bg-primary text-primary-foreground shadow-[0_0_24px_hsl(159_79%_54%_/_0.38)]" 
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   isLocked && "opacity-60"
                 )}

@@ -390,6 +390,52 @@ function ProfitHeatLayer({ heatData }: { heatData: ZoneProfitHeatResponse }) {
   );
 }
 
+interface HexHeatCell {
+  id: string;
+  lat: number;
+  lng: number;
+  radius: number;
+  score: number;
+}
+
+interface HexHeatResponse {
+  generatedAt: string;
+  radius: number;
+  cells: HexHeatCell[];
+}
+
+// Granular grid: dense green gradient (concept style), red core for surge
+function getHexGridColor(score: number): { color: string; opacity: number } {
+  if (score >= 90) return { color: '#FF5470', opacity: 0.5 };  // surge core
+  if (score >= 75) return { color: '#22C55E', opacity: 0.48 };
+  if (score >= 55) return { color: '#34D399', opacity: 0.4 };
+  if (score >= 35) return { color: '#6EE7B7', opacity: 0.3 };
+  return { color: '#A7F3D0', opacity: 0.2 };
+}
+
+function HexGridLayer({ cells }: { cells: HexHeatCell[] }) {
+  return (
+    <>
+      {cells.map((c) => {
+        const { color, opacity } = getHexGridColor(c.score);
+        return (
+          <Polygon
+            key={`hex-${c.id}`}
+            positions={getHexagonPoints(c.lat, c.lng, c.radius)}
+            pathOptions={{
+              color,
+              fillColor: color,
+              fillOpacity: opacity,
+              weight: 1,
+              opacity: Math.min(1, opacity + 0.15),
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 interface MapViewProps {
   driverPosition?: GeoPosition | null;
 }
@@ -407,6 +453,17 @@ export function MapView({ driverPosition }: MapViewProps) {
     queryFn: async () => {
       const res = await fetch(`/api/zone-profit-heat?hoursAhead=${selectedOffset.hours}&minutesAhead=${selectedOffset.minutes}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch heat data');
+      return res.json();
+    },
+    refetchInterval: selectedTimeIdx === 0 ? 60000 : undefined,
+    placeholderData: (prev) => prev,
+  });
+
+  const { data: hexHeat } = useQuery<HexHeatResponse>({
+    queryKey: ['/api/hex-heat', selectedOffset.hours, selectedOffset.minutes],
+    queryFn: async () => {
+      const res = await fetch(`/api/hex-heat?hoursAhead=${selectedOffset.hours}&minutesAhead=${selectedOffset.minutes}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch hex heat');
       return res.json();
     },
     refetchInterval: selectedTimeIdx === 0 ? 60000 : undefined,
@@ -479,6 +536,7 @@ export function MapView({ driverPosition }: MapViewProps) {
       <MapContainer 
         center={KRAKOW_COORDS} 
         zoom={13} 
+        preferCanvas={true}
         style={{ height: '100%', width: '100%' }}
         className="z-0"
       >
@@ -489,6 +547,7 @@ export function MapView({ driverPosition }: MapViewProps) {
 
         <MapController center={KRAKOW_COORDS} />
 
+        {hexHeat && <HexGridLayer cells={hexHeat.cells} />}
         {heatData && <ProfitHeatLayer heatData={heatData} />}
 
         <TrafficLayer enabled={showTraffic} />

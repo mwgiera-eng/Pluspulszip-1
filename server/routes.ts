@@ -13,6 +13,7 @@ import { getSubscriptionStatus, activateSubscription } from "./subscriptionServi
 import { registerTransaction, processBlikPayment, verifyWebhookSignature, verifyTransaction, isSandboxMode, type PaymentMethod } from "./przelewy24Service";
 import { getPopularRoutes } from "./popularRoutes";
 import { getRoadTraffic } from "./roadTraffic";
+import { getHexHeat } from "./hexHeat";
 import { fetchMultipleRouteGeometries } from "./osrmService";
 import { startEventsRefreshLoop, getActiveEvents, refreshEvents, getEventsCacheMeta, getAllCachedEvents } from "./krakowEvents";
 import { generateDayPlan } from "./dayPlanner";
@@ -797,6 +798,18 @@ export async function registerRoutes(
 
     const heat = getZoneProfitHeat(allZones, allPois, hoursAhead, minutesAhead);
     res.json(heat);
+  });
+
+  // === Granular Hex Heat Grid ===
+  app.get("/api/hex-heat", async (req, res) => {
+    const hoursAhead = req.query.hoursAhead ? parseFloat(req.query.hoursAhead as string) : 0;
+    const minutesAhead = req.query.minutesAhead ? parseFloat(req.query.minutesAhead as string) : 0;
+    if (!Number.isFinite(hoursAhead) || !Number.isFinite(minutesAhead) || hoursAhead < 0 || hoursAhead > 24 || minutesAhead < 0 || minutesAhead > 59) {
+      return res.status(400).json({ message: "Invalid forecast offset" });
+    }
+    const [allZones, allPois] = await Promise.all([storage.getZones(), storage.getPois()]);
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.json(getHexHeat(allZones, allPois, hoursAhead, minutesAhead));
   });
 
   // === Road Traffic Simulation (OSM geometries + simulated intensity) ===

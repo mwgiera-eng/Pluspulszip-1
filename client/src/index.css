@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
@@ -6,14 +6,14 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
 
   /* PlusPuls Unified Design System — one accent (teal), restrained color */
   --background: 222 33% 6%;        /* bg.base #0A0D14 */
   --foreground: 223 28% 95%;       /* text.primary #EFF1F6 */
 
-  --card: 225 31% 10%;             /* surface.1 #121622 */
+  --card: 224 30% 10%;             /* surface.1 #121622 */
   --card-foreground: 223 28% 95%;
 
   --popover: 225 31% 10%;
@@ -23,7 +23,7 @@
   --primary: 159 79% 54%;          /* accent.primary #2EE6A6 */
   --primary-foreground: 222 33% 6%; /* dark text on teal */
 
-  --secondary: 225 28% 14%;        /* surface.2 #1A1F2E */
+  --secondary: 224 28% 14%;        /* surface.2 #1A1F2E */
   --secondary-foreground: 223 28% 95%;
 
   --muted: 225 28% 14%;
@@ -35,7 +35,7 @@
   --destructive: 350 100% 66%;     /* coral #FF5470 */
   --destructive-foreground: 223 28% 95%;
 
-  --border: 224 24% 18%;           /* border.card #222838 */
+  --border: 222 27% 22%;           /* border.card #222838 */
   --input: 224 24% 18%;
   --ring: 159 79% 54%;
 
@@ -60,11 +60,31 @@
     @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
     font-family: var(--font-sans);
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    background-image:
+      radial-gradient(circle at 82% 8%, hsl(188 90% 50% / .06), transparent 28rem),
+      radial-gradient(circle at 12% 90%, hsl(159 79% 54% / .035), transparent 24rem);
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply tracking-tight font-semibold;
   }
+}
+
+@layer components {
+  .neon-surface {
+    border-color: hsl(var(--border));
+    box-shadow: 0 0 0 1px hsl(var(--primary) / .025), 0 18px 55px hsl(222 40% 2% / .32);
+  }
+  .neon-surface:hover {
+    border-color: hsl(var(--primary) / .38);
+    box-shadow: 0 0 24px hsl(var(--primary) / .08), 0 18px 55px hsl(222 40% 2% / .4);
+  }
+  .neon-button {
+    box-shadow: 0 0 18px hsl(var(--primary) / .18);
+    transition: box-shadow .25s ease, transform .25s ease, opacity .25s ease;
+  }
+  .neon-button:hover { box-shadow: 0 0 28px hsl(var(--primary) / .42); transform: translateY(-1px); }
+  .live-dot { box-shadow: 0 0 0 4px hsl(var(--primary) / .10), 0 0 14px hsl(var(--primary) / .8); }
 }
 
 /* Map Customization */
@@ -150,3 +170,10 @@
 .heat-score-tooltip::before {
   display: none !important;
 }
+
+.leaflet-control-zoom a {
+  background: hsl(var(--card) / .94) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+.leaflet-control-zoom a:hover { color: hsl(var(--primary)) !important; box-shadow: 0 0 16px hsl(var(--primary) / .25); }

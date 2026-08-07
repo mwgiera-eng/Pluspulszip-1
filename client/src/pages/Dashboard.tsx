@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { X, AlertTriangle } from "lucide-react";
+import { NextMoveCard } from "@/components/NextMoveCard";
 
 interface ScrapedFlight {
   time: string;
@@ -397,7 +398,7 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
   };
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden flex-col">
+    <div className="flex min-h-[100dvh] bg-background text-foreground overflow-hidden flex-col">
       {isPublic && publicBanner}
       <div className="flex flex-1 overflow-hidden">
       {!isPublic && <Sidebar />}
@@ -408,8 +409,8 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
             <div>
-              <h2 className="text-lg md:text-2xl font-bold tracking-tight">Driver Command Center</h2>
-              <p className="text-muted-foreground text-xs mt-0.5">Real-time optimization for Krakow</p>
+              <h2 className="text-lg md:text-2xl font-bold tracking-tight">Centrum dowodzenia kierowcy</h2>
+              <p className="text-muted-foreground text-xs mt-0.5">Nocna zmiana · Kraków · dane na żywo</p>
             </div>
             {topRec && (
               <div className="bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full flex items-center gap-2" data-testid="badge-live-recommendation">
@@ -436,6 +437,8 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
               </a>
             </div>
           )}
+
+          <NextMoveCard />
 
           {!isPublic && <div className="bg-card rounded-2xl border border-border shadow-none overflow-hidden" data-testid="section-strategic-advice">
             <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between gap-3 flex-wrap">

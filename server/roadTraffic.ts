@@ -84,14 +84,48 @@ function hash01(id: number): number {
   return h / 4294967295;
 }
 
-/** Base traffic level 0..1 for a given hour in Krakow (CET) */
-function hourCurve(hour: number): number {
-  // morning peak ~8, evening peak ~17, quiet at night
+/** Base traffic level 0..1 for a given hour in Krakow (CET), weekday-aware */
+function hourCurve(hour: number, dow?: number): number {
+  const isWeekend = dow === 0 || dow === 6;
+  const isFriSat = dow === 5 || dow === 6;
+  if (isWeekend) {
+    // late start, afternoon shopping/leisure peak, evening social peak
+    const midday = 0.55 * Math.exp(-Math.pow(hour - 14, 2) / 14);
+    const evening = 0.7 * Math.exp(-Math.pow(hour - 19, 2) / 10);
+    const nightlife = isFriSat ? 0.35 * Math.exp(-Math.pow(hour - 23, 2) / 4) : 0;
+    const night = hour >= 2 && hour <= 6 ? 0.04 : 0.1;
+    return Math.min(1, night + midday + evening + nightlife);
+  }
+  // weekday: morning peak ~8, evening peak ~17
   const morning = Math.exp(-Math.pow(hour - 8, 2) / 6);
   const evening = Math.exp(-Math.pow(hour - 17, 2) / 8);
   const day = 0.25 * Math.exp(-Math.pow(hour - 13, 2) / 30);
+  const nightlife = isFriSat ? 0.3 * Math.exp(-Math.pow(hour - 22.5, 2) / 4) : 0;
   const night = hour >= 22 || hour <= 4 ? 0.05 : 0.12;
-  return Math.min(1, night + day + 0.85 * morning + 0.95 * evening);
+  return Math.min(1, night + day + nightlife + 0.85 * morning + 0.95 * evening);
+}
+
+function krakowNowParts(offsetMinutes = 0): { hour: number; dow: number } {
+  const d = new Date(Date.now() + offsetMinutes * 60_000);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Warsaw",
+    hour: "2-digit",
+    hour12: false,
+    weekday: "short",
+    minute: "2-digit",
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const dowMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    hour: (parseInt(get("hour"), 10) % 24) + parseInt(get("minute"), 10) / 60,
+    dow: dowMap[get("weekday")] ?? 1,
+  };
+}
+
+/** Base traffic level 0..1 at now + offsetMinutes (Krakow time, weekday-aware). */
+export function trafficBaseLevel(offsetMinutes = 0): number {
+  const { hour, dow } = krakowNowParts(offsetMinutes);
+  return hourCurve(hour, dow);
 }
 
 const HIGHWAY_WEIGHT: Record<string, number> = {
@@ -119,7 +153,9 @@ export async function getRoadTraffic(): Promise<{
     }).format(now),
     10,
   ) % 24;
-  const base = hourCurve(krakowHour + now.getUTCMinutes() / 60);
+  const dowStr = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Warsaw", weekday: "short" }).format(now);
+  const dowMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const base = hourCurve(krakowHour + now.getUTCMinutes() / 60, dowMap[dowStr] ?? 1);
 
   // Slow oscillation so intensities drift over minutes, not per-request noise
   const t = Math.floor(now.getTime() / 60000); // minutes epoch

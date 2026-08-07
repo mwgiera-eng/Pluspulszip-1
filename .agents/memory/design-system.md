@@ -1,16 +1,21 @@
 ---
-name: PlusPuls unified design system
-description: Binding visual rules from the user's uploaded design spec (Aug 2026)
+name: PlusPuls design system
+description: Current binding visual direction for PlusPuls (neon night-drive cockpit) and its history
 ---
 
-Source of truth: `attached_assets/Pasted-Let-me-redesign-the-entire-visual-system-from-scratch-u_1786073708133.txt`.
+# PlusPuls visual direction (current: NEON, since Aug 7 2026)
 
-Rules (user-approved, replace the earlier gradient-card look):
-- One accent: teal `#2EE6A6` — only for active states, money values, primary CTA. Amber `#FFB547` = caution, coral `#FF5470` = surge/danger. Everything else grayscale on dark bg `#0A0D14`, surface `#121622`, border `#222838`.
-- **No gradients, no glows, no blooms** anywhere. Flat solids only; max 3 shadow levels.
-- Dark text `#0A0D14` on teal buttons; radius 16px cards, 12–14px buttons.
-- Map exception: user explicitly demands **light** CartoDB tiles — dark map tokens from spec do NOT apply to tiles; dormant heat tier uses muted grey `#8B8FA8` @ 0.12 instead of the spec's dark `#1A3328` (invisible/muddy on light map).
-- shadcn `--accent` must stay a neutral hover fill (surface.2) — never coral, or all hover/selected primitives look like errors.
+The user explicitly replaced the earlier flat no-glow system with a **neon "night-drive cockpit"** aesthetic, based on a concept board they uploaded (attached_assets/image_1786079178029.png).
 
-**Why:** user uploaded a complete design-system spec and it supersedes prior visuals; code review failed the first pass for leftover glows/gradients.
-**How to apply:** any new UI (Earnings/Planner/Subscription restyle, animations tasks #10/#11) must follow these tokens; check for stray purple/orange/emerald Tailwind classes.
+Rules:
+- Dark base stays #0A0D14 family; teal #2EE6A6 remains the primary accent — but now it GLOWS (halos, soft shadows, pulses are welcome and expected).
+- Fonts: DM Sans + Space Mono.
+- Luminous greens for the map heat grid (green gradient tiers, red #FF5470 surge core), amber #FFB547 caution, coral #FF5470 danger/jammed.
+- Light map tiles remain a user-mandated exception (dark UI chrome over light map).
+- Traffic dots are congestion-colored: teal flowing / amber busy / coral jammed.
+
+**Why:** user rejected the flat look after seeing the neon concept gallery and chose "shift the whole app toward this neon/glow aesthetic" — this supersedes the old "no gradients/glows" rule from the earlier spec.
+
+**How to apply:** any new screen/component should glow tastefully like the concept board; do not revert to flat borders-only styling. The "NEXT MOVE" card (NextMoveCard.tsx) is the reference component for the current direction.
+
+History: the previous flat system (one accent, no gradients/glows) came from a pasted spec in attached_assets and was binding until Aug 7 2026.

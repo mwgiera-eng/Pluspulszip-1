@@ -18,8 +18,12 @@ interface RoadTrafficResponse {
   baseLevel: number;
 }
 
-// Uniform brand green — dots differ only in speed/density, not color
-const DOT_COLOR = '#2EE6A6';
+// Dot color adapts to congestion: free-flow green → busy amber → jammed red
+function dotColor(intensity: number): string {
+  if (intensity >= 0.75) return '#FF5470'; // jammed
+  if (intensity >= 0.5) return '#FFB547';  // busy
+  return '#2EE6A6';                        // flowing
+}
 
 interface PreparedRoad {
   latlngs: L.LatLng[];
@@ -77,7 +81,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
           cumLen,
           totalLen,
           intensity: r.intensity,
-          color: DOT_COLOR,
+          color: dotColor(r.intensity),
           dotCount,
           speed,
           phases,
@@ -152,28 +156,31 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const size = map.getSize();
 
-      // single path batch — all dots share one uniform color
-      ctx.fillStyle = DOT_COLOR;
+      // batch dots per congestion color (one path per color)
       ctx.globalAlpha = 0.85;
-      ctx.beginPath();
+      const colors = ['#2EE6A6', '#FFB547', '#FF5470'];
+      for (const color of colors) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        for (const road of visibleRoads) {
+          if (road.color !== color) continue;
+          for (let d = 0; d < road.dotCount; d++) {
+            const dist =
+              ((road.phases[d] * road.totalLen + elapsed * road.speed) %
+                road.totalLen + road.totalLen) % road.totalLen;
+            const ll = pointAt(road, dist);
+            const pt = map.latLngToContainerPoint(ll);
+            if (
+              pt.x < -boundsPad || pt.y < -boundsPad ||
+              pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
+            ) continue;
 
-      for (const road of visibleRoads) {
-        for (let d = 0; d < road.dotCount; d++) {
-          const dist =
-            ((road.phases[d] * road.totalLen + elapsed * road.speed) %
-              road.totalLen + road.totalLen) % road.totalLen;
-          const ll = pointAt(road, dist);
-          const pt = map.latLngToContainerPoint(ll);
-          if (
-            pt.x < -boundsPad || pt.y < -boundsPad ||
-            pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
-          ) continue;
-
-          ctx.moveTo(pt.x + 1.6, pt.y);
-          ctx.arc(pt.x, pt.y, 1.6, 0, Math.PI * 2);
+            ctx.moveTo(pt.x + 1.6, pt.y);
+            ctx.arc(pt.x, pt.y, 1.6, 0, Math.PI * 2);
+          }
         }
+        ctx.fill();
       }
-      ctx.fill();
       ctx.globalAlpha = 1;
     };
     rafRef.current = requestAnimationFrame(frame);

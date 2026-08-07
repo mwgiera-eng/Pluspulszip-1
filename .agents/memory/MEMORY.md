@@ -1,1 +1,1 @@
-- [PlusPuls design system](design-system.md) — one teal accent #2EE6A6, no gradients/glows, dark #0A0D14; light map tiles are a user-mandated exception.
+- [PlusPuls design system](design-system.md) — NEON night-drive cockpit (glows welcome) since Aug 2026, teal #2EE6A6 primary, dark #0A0D14; light map tiles still user-mandated.

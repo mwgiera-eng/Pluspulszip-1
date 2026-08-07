@@ -57,13 +57,14 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground grid lg:grid-cols-2">
+    <div className="min-h-[100dvh] bg-background text-foreground grid lg:grid-cols-2">
       {/* Left Panel: Hero */}
-      <div className="relative hidden lg:flex flex-col justify-between p-12 bg-secondary border-r border-border overflow-hidden">
+      <div className="relative hidden lg:flex flex-col justify-between p-12 bg-[radial-gradient(circle_at_50%_42%,hsl(159_79%_54%_/_0.13),transparent_20rem),hsl(224_30%_8%)] border-r border-primary/15 overflow-hidden">
+        <div className="absolute inset-0 opacity-30 bg-[linear-gradient(115deg,transparent_0%,hsl(188_90%_50%_/_0.08)_48%,transparent_49%)]" />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center">
+              <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center shadow-[0_0_30px_hsl(159_79%_54%_/_0.6)]">
               <svg viewBox="0 0 20 20" fill="none" className="w-5 h-5">
                 <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
                 <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="#0A0D14"/>
@@ -77,7 +78,7 @@ export default function Login() {
 
           <h2 className="text-5xl font-bold leading-tight tracking-tight mb-6">
             See demand<br />
-            <span className="text-primary">before it happens.</span>
+            <span className="text-primary drop-shadow-[0_0_18px_hsl(159_79%_54%_/_0.5)]">zanim się wydarzy.</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-md leading-relaxed">
             Analityka popytu w czasie rzeczywistym i inteligentne pozycjonowanie dla kierowców ride-hailing w Polsce.
@@ -138,12 +139,12 @@ export default function Login() {
               <span className="text-xl font-bold">+Puls</span>
             </div>
             <h3 className="text-2xl font-bold">
-              {mode === "register" ? "Utwórz konto" : "Zaloguj się"}
+              {mode === "register" ? "Uruchom swój kokpit" : "Włącz kokpit"}
             </h3>
             <p className="text-muted-foreground text-sm">
               {mode === "register"
-                ? "Załóż konto i zacznij zarabiać więcej."
-                : "Witaj z powrotem — kontynuuj tam, gdzie skończyłeś."}
+                ? "Załóż konto i zobacz popyt zanim ruszy fala."
+                : "Witaj z powrotem — Kraków już jedzie."}
             </p>
           </div>
 
@@ -190,7 +191,7 @@ export default function Login() {
                 )}
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="email">Adres e-mail</Label>
+                    <Label htmlFor="email">Adres e-mail</Label>
                   <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                     placeholder="jan@przyklad.pl" autoComplete="email" required data-testid="input-email" />
                 </div>
@@ -215,15 +216,15 @@ export default function Login() {
                   <p className="text-sm text-destructive" role="alert" data-testid="text-auth-error">{error}</p>
                 )}
 
-                <Button
+             <Button
                   type="submit"
                   size="lg"
                   disabled={submitting}
-                  className="w-full h-12 text-base font-semibold"
+                   className="w-full h-12 text-base font-semibold neon-button"
                   data-testid="button-submit-auth"
                 >
                   {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {mode === "register" ? "Załóż konto" : "Zaloguj się"}
+                   {mode === "register" ? "Utwórz konto" : "Zaloguj się"}
                 </Button>
               </form>
 
