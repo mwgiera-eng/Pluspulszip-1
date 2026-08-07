@@ -29,16 +29,16 @@ export function Sidebar() {
       <div className="p-6 border-b border-border/10">
         <div className="flex items-center gap-2.5">
           {/* Waveform / pulse logo icon */}
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
             <svg viewBox="0 0 20 20" fill="none" className="w-4.5 h-4.5">
-              <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
-              <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="white"/>
-              <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="white" fillOpacity="0.9"/>
-              <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="white"/>
-              <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+              <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
+              <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="#0A0D14"/>
+              <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
+              <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="#0A0D14"/>
+              <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
             </svg>
           </div>
-          <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-400">
+          <h1 className="text-xl font-bold text-foreground">
             +Puls
           </h1>
         </div>

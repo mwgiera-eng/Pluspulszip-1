@@ -555,7 +555,7 @@ export default function Dashboard({ isPublic = false, publicBanner }: { isPublic
               icon={TrendingUp}
               trend="neutral"
               trendValue="0%"
-              variant="blue"
+              variant="green"
             />
             <StatsCard
               title="Trips Completed"

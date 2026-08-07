@@ -1,0 +1,551 @@
+Let me redesign the entire visual system from scratch — unified palette, restrained color use, and genuine product-design polish.
+
+Now let me generate two more screens — the animated state transitions and the admin console — completing the full unified set.
+
+Now let me generate the tablet landscape adaptive layout with the same unified palette.
+
+Here is the complete unified design system with full animation specifications.
+
+Unified Design System — PlusPuls
+Color Philosophy
+One accent. Color serves data, never decorates. The palette is intentionally restrained — 90% of the interface is monochrome dark, and teal appears only where it carries meaning: active states, money values, and primary actions. Amber and coral are even rarer, reserved exclusively for caution and danger signals.
+
+Design principle
+info
+If removing the color wouldn't change the meaning, the color shouldn't be there. Teal = go/money/active. Amber = caution. Coral = danger. Everything else is grayscale.
+Complete Token Table
+Token	Hex	Role	Usage Rule
+bg.base	#0A0D14	App background	Every screen, every time
+bg.sidebar	#0D1018	Sidebar variant	Tablet/desktop only
+surface.1	#121622	Cards, inputs, sheets	Primary elevated surface
+surface.2	#1A1F2E	Hover/fill states	Progress tracks, input fills
+border.subtle	#161A26	Map streets, dividers	Barely visible structural lines
+border.default	#1A1F2E	List separators	Between list rows, chart grid
+border.card	#222838	Card borders, input borders	Visible but quiet
+border.focus	#2EE6A6	Active input border	Replace card border on focus
+text.primary	#EFF1F6	Main content text	Headers, values, labels
+text.secondary	#8B8FA8	Supporting text	Subtitles, timestamps, hints
+text.tertiary	#565A73	Disabled, inactive icons	Nav icons inactive, faint labels
+text.placeholder	#4A4E5C	Input placeholders	Never darker than this
+accent.primary	#2EE6A6	Teal — go/money/active	Active nav, money values, primary CTA fill
+accent.primaryText	#0A0D14	Text on teal bg	Button text on teal buttons
+accent.dim	#15281F	Dormant heat	Lowest heatmap tier, barely visible
+accent.warm	#1A3328	Rising heat	Medium-low demand hexes
+warning	#FFB547	Amber — caution	Medium demand, medium multipliers, delayed responses
+warning.tint	#FF547010	Amber background tint	Alert bars, warning strips
+danger	#FF5470	Coral — surge/danger	Surge demand, errors, webhook issues
+danger.tint	#FF547010	Coral background tint	Alert bars, error backgrounds
+Color Allocation Per Screen Element
+Element	Color	Notes
+Screen background	#0A0D14	Solid, never gradient
+Card background	#121622	Solid, never gradient
+Card border	#222838	0.5–1px, never thicker
+Primary button fill	#2EE6A6	Solid flat, no gradient
+Primary button text	#0A0D14	Dark text on teal
+Secondary button	transparent	Border #222838, text #8B8FA8
+Active nav icon	#2EE6A6	+ 3dp dot below
+Inactive nav icon	#8B8FA8	—
+Money values	#2EE6A6	Only monetary amounts
+Neutral values	#EFF1F6	Counts, distances
+Warning values	#FFB547	Medium multipliers (1.3×–1.5×)
+Surge values	#FF5470	High multipliers (1.6×+)
+Heatmap dormant	#121622 @ 15%	Invisible unless looked for
+Heatmap rising	#1A3328 @ 25%	Subtle green tint
+Heatmap hot	#2EE6A6 @ 25–30%	Clearly visible but not loud
+Heatmap surge	#FF5470 @ 25–30%	Single hex, draws eye
+Progress bar fill	#2EE6A6	Flat solid, no gradient
+Progress bar track	#1A1F2E	—
+Input border idle	#222838	—
+Input border focus	#2EE6A6	Smooth 150ms transition
+Signal dot indicators	match meaning	Teal/amber/coral 5–6dp dots only
+Typography Scale
+Single typeface: Inter (or SF Pro Display on iOS). Tabular figures for all numeric values.
+
+Style	Weight	Size	Line Height	Letter Spacing	Usage
+Hero Number	Bold (700)	44sp	48sp	-1.0%	Single most important number on screen
+Screen Title	Semibold (600)	22sp	28sp	-0.3%	"Planner", "Earnings", "Admin"
+Section Title	Semibold (600)	15sp	20sp	0%	"Opportunities", "System Health"
+Card Title	Semibold (600)	18sp	24sp	0%	Recommendation action text
+Body	Regular (400)	14sp	20sp	0%	Descriptions, subtitles
+Body Small	Regular (400)	13sp	18sp	0%	List items, secondary info
+Caption	Regular (400)	11sp	16sp	0%	Timestamps, response times
+Micro Label	Medium (500)	9sp	12sp	+1.0%	Uppercase metric labels
+Spacing System (4dp Baseline)
+Token	Value	Usage
+xs	4dp	Tight icon-text gaps, dot-to-text spacing
+sm	8dp	Within-card element gaps, carousel dot spacing
+md	12dp	Between related cards, list item subsections
+lg	16dp	Card padding, standard component gaps
+xl	20dp	Screen edge padding, section breaks
+2xl	24dp	Hero section gaps, major content divisions
+3xl	28dp	After hero number, before CTAs
+Corner Radius
+Element	Radius	Notes
+Buttons	12–14dp	Consistent within a screen
+Cards	16dp	All cards uniform
+Bottom sheet top	20dp	Only top corners
+Inputs	14dp	Matches buttons
+Pills/chips	50% (full)	Height/2 for pill shape
+Nav indicator dot	50%	Circle
+Map markers	50%	Circles
+Image/avatar	50%	Circles
+Shadow / Elevation
+Only three levels. No glows, no blooms, no neon.
+
+Level	Box Shadow	Usage
+Flat	none	90% of surfaces
+Card	0 4px 16px rgba(0,0,0,0.4)	POI popups, floating bars only
+Sheet	0 -4px 20px rgba(0,0,0,0.6)	Bottom sheet casting upward shadow
+Motion Design System — Fluent Screen Animations
+Every animation exists to communicate state change, never to decorate. Durations are short — the app should feel instant, not theatrical.
+
+Screen Transitions
+// Navigation graph transitions — define once, apply globally
+
+navHost.navigate(route) {
+    enterTransition = {
+        fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+        slideIntoContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+            animationSpec = tween(220, easing = FastOutSlowInEasing)
+        )
+    }
+    exitTransition = {
+        fadeOut(animationSpec = tween(120, easing = FastOutLinearInEasing))
+    }
+    popEnterTransition = {
+        fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+        slideIntoContainer(
+            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+            animationSpec = tween(220, easing = FastOutSlowInEasing)
+        )
+    }
+    popExitTransition = {
+        fadeOut(animationSpec = tween(120, easing = FastOutLinearInEasing))
+    }
+}
+
+Component-Level Animation Specs
+Trigger	Element	Duration	Easing	Properties	Curve
+Screen enter	Content block	220ms	FastOutSlowInEasing	alpha 0→1, offsetY 8dp→0	Cubic(0.4, 0.0, 0.2, 1.0)
+Card tap	Any card/button	100ms	LinearOutSlowInEasing	scale 1.0→0.97	Cubic(0.0, 0.0, 0.2, 0.1)
+Card release	Any card/button	180ms	FastOutSlowInEasing	scale 0.97→1.0	Cubic(0.4, 0.0, 0.2, 1.0)
+Bottom sheet expand	Sheet content	280ms	FastOutSlowInEasing	height peek→full, alpha content	Cubic(0.4, 0.0, 0.2, 1.0)
+Bottom sheet collapse	Sheet content	200ms	LinearOutSlowInEasing	height→peek, alpha content	Cubic(0.0, 0.0, 0.2, 0.1)
+Tab switch	Tab content area	160ms	FastOutSlowInEasing	alpha crossfade 0↔1	Cubic(0.4, 0.0, 0.2, 1.0)
+Tab indicator	Underline/dot	200ms	FastOutSlowInEasing	offsetX matching tab width	Cubic(0.4, 0.0, 0.2, 1.0)
+Number count-up	Money values	600ms	FastOutSlowInEasing	value 0→target	Cubic(0.4, 0.0, 0.2, 1.0)
+Input focus	Border color	150ms	LinearEasing	color #222838→#2EE6A6	Linear
+Recommendation arrive	Card	260ms	FastOutSlowInEasing	alpha 0→1, offsetY 16dp→0	Cubic(0.4, 0.0, 0.2, 1.0)
+Recommendation dismiss	Card	180ms	FastOutLinearInEasing	alpha 1→0, offsetX 0→-32dp	Cubic(0.4, 0.0, 1.0, 1.0)
+Hex heatmap update	Map hexes	350ms	FastOutSlowInEasing	fill-opacity per hex	Cubic(0.4, 0.0, 0.2, 1.0)
+Driver location pulse	Map marker	2000ms loop	LinearEasing	ring scale 1→2.5, alpha 0.6→0	Linear
+Map camera pan	Camera	400ms	FastOutSlowInEasing	center, zoom	Cubic(0.4, 0.0, 0.2, 1.0)
+Toast/snackbar	Notification	220ms	FastOutSlowInEasing	alpha 0→1, offsetY -24dp→0	Cubic(0.4, 0.0, 0.2, 1.0)
+Snackbar dismiss	Notification	160ms	FastOutLinearInEasing	alpha 1→0, offsetY 0→-24dp	Cubic(0.4, 0.0, 1.0, 1.0)
+Shimmer loading	Skeleton	1400ms loop	LinearEasing	gradient sweep translateX	Linear
+Pull to refresh	List	300ms	FastOutSlowInEasing	rotation, offset	Cubic(0.4, 0.0, 0.2, 1.0)
+Bottom nav dot	Active indicator	200ms	FastOutSlowInEasing	dot alpha, scaleX	Cubic(0.4, 0.0, 0.2, 1.0)
+List item swipe reveal	Action button	200ms	FastOutSlowInEasing	offsetX hidden→visible	Cubic(0.4, 0.0, 0.2, 1.0)
+Date strip scroll	Date pills	250ms	FastOutSlowInEasing	scroll position, selected state	Cubic(0.4, 0.0, 0.2, 1.0)
+Segmented control	Selection fill	200ms	FastOutSlowInEasing	offsetX of fill indicator	Cubic(0.4, 0.0, 0.2, 1.0)
+Easing Curves Reference
+// Define reusable easing specs in one file — import everywhere
+
+object PlusPulsEasing {
+    // Primary — used for 80% of animations
+    val FastOutSlowIn = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f)
+    
+    // Entering elements — slight acceleration
+    val LinearOutSlowIn = CubicBezierEasing(0.0f, 0.0f, 0.2f, 0.1f)
+    
+    // Exiting elements — slight deceleration
+    val FastOutLinearIn = CubicBezierEasing(0.4f, 0.0f, 1.0f, 1.0f)
+    
+    // Never use bounce springs — this app is confident, not playful
+}
+
+Duration Tokens
+object PlusPulsDurations {
+    const val INSTANT = 80       // Button press scale-down
+    const val QUICK = 120        // Exit fades, micro toggles
+    const val SHORT = 180        // Release animations, input border
+    const val STANDARD = 220     // Screen transitions, card entrances
+    const val DELIBERATE = 280   // Bottom sheet expand, significant state changes
+    const val EMPHASIS = 400     // Map camera moves, chart redraws
+    const val LOOP_PULSE = 2000  // Driver location pulsing ring
+    const val LOOP_SHIMMER = 1400 // Skeleton loading sweep
+}
+
+Compose Animation Patterns (Reusable)
+// 1. Screen enter animation — applied to root composable of each screen
+@Composable
+fun AnimatedScreenEnter(content: @Composable () -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(
+            animationSpec = tween(
+                durationMillis = 220,
+                easing = PlusPulsEasing.FastOutSlowIn
+            )
+        ) + slideInVertically(
+            initialOffsetY = { 24 },
+            animationSpec = tween(
+                durationMillis = 220,
+                easing = PlusPulsEasing.FastOutSlowIn
+            )
+        )
+    ) {
+        content()
+    }
+}
+
+// 2. Number count-up for money values
+@Composable
+fun AnimatedMoney(
+    targetValue: Int,
+    modifier: Modifier = Modifier,
+    style: TextStyle = Typography.headlineMedium
+) {
+    val animatedValue by animateIntAsState(
+        targetValue = targetValue,
+        animationSpec = tween(
+            durationMillis = 600,
+            easing = PlusPulsEasing.FastOutSlowIn
+        ),
+        label = "money_count_up"
+    )
+    Text(
+        text = "$animatedValue zł",
+        style = style.copy(fontFeatureSettings = "tnum"),
+        modifier = modifier
+    )
+}
+
+// 3. Button press scale — modifier extension
+fun Modifier.pressScale(
+    pressed: Boolean,
+    scaleDown: Float = 0.97f
+): Modifier = this.then(
+    graphicsLayer {
+        scaleX = animateFloatAsState(
+            targetValue = if (pressed) scaleDown else 1f,
+            animationSpec = tween(
+                durationMillis = if (pressed) 100 else 180,
+                easing = if (pressed) PlusPulsEasing.LinearOutSlowIn 
+                         else PlusPulsEasing.FastOutSlowIn
+            ),
+            label = "press_scale"
+        ).value
+        scaleY = scaleX
+    }
+)
+
+// 4. Recommendation card entrance
+@Composable
+fun RecommendationCardEntrance(
+    recommendation: CopilotRecommendation?,
+    content: @Composable (CopilotRecommendation) -> Unit
+) {
+    AnimatedVisibility(
+        visible = recommendation != null,
+        enter = fadeIn(
+            animationSpec = tween(260, easing = PlusPulsEasing.FastOutSlowIn)
+        ) + slideInVertically(
+            initialOffsetY = { 48 },
+            animationSpec = tween(260, easing = PlusPulsEasing.FastOutSlowIn)
+        ),
+        exit = fadeOut(
+            animationSpec = tween(180, easing = PlusPulsEasing.FastOutLinearIn)
+        ) + slideOutHorizontally(
+            targetOffsetX = { -96 },
+            animationSpec = tween(180, easing = PlusPulsEasing.FastOutLinearIn)
+        )
+    ) {
+        recommendation?.let { content(it) }
+    }
+}
+
+// 5. Pulse ring for driver location on map
+@Composable
+fun DriverPulseMarker(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "pulse")
+    
+    val ringScale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 2.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ring_scale"
+    )
+    
+    val ringAlpha by transition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ring_alpha"
+    )
+    
+    Box(modifier = modifier.size(10.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.matchParentSize()) {
+            // Expanding ring
+            drawCircle(
+                color = Color(0xFF2EE6A6).copy(alpha = ringAlpha),
+                radius = size.minDimension / 2 * ringScale,
+                style = Stroke(width = 1.dp.toPx())
+            )
+            // Solid center dot
+            drawCircle(
+                color = Color(0xFF2EE6A6),
+                radius = size.minDimension / 4
+            )
+        }
+    }
+}
+
+// 6. Bottom sheet with smooth gesture-driven spring
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PlusPulsBottomSheet(
+    sheetState: SheetState,
+    content: @Composable () -> Unit
+) {
+    ModalBottomSheet(
+        sheetState = sheetState,
+        containerColor = Color(0xFF121622),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .width(28.dp)
+                    .height(3.dp)
+                    .background(
+                        Color(0xFF3A4055),
+                        RoundedCornerShape(1.5.dp)
+                    )
+            )
+        },
+        tonalElevation = 0.dp,
+        shadowElevation = 20.dp
+    ) {
+        content()
+    }
+}
+
+// 7. Shimmer loading skeleton
+@Composable
+fun PlusPulsShimmer(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(12.dp)
+) {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateX by transition.animateFloat(
+        initialValue = -300f,
+        targetValue = 300f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_x"
+    )
+    
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(Color(0xFF1A1F2E))
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = 0.04f),
+                            Color.Transparent
+                        ),
+                        start = Offset(translateX, 0f),
+                        end = Offset(translateX + 200f, size.height)
+                    )
+                )
+            }
+    )
+}
+
+// 8. Tab indicator with smooth slide
+@Composable
+fun PlusPulsTabIndicator(
+    tabPositions: List<TabPosition>,
+    selectedTabIndex: Int,
+    modifier: Modifier = Modifier
+) {
+    val indicatorOffset by animateDpAsState(
+        targetValue = tabPositions[selectedTabIndex].left,
+        animationSpec = tween(
+            durationMillis = 200,
+            easing = PlusPulsEasing.FastOutSlowIn
+        ),
+        label = "tab_indicator"
+    )
+    val indicatorWidth by animateDpAsState(
+        targetValue = tabPositions[selectedTabIndex].width,
+        animationSpec = tween(
+            durationMillis = 200,
+            easing = PlusPulsEasing.FastOutSlowIn
+        ),
+        label = "tab_width"
+    )
+    
+    Box(
+        Modifier
+            .offset(x = indicatorOffset)
+            .width(indicatorWidth)
+            .padding(horizontal = 16.dp)
+            .height(2.dp)
+            .background(
+                Color(0xFF2EE6A6),
+                RoundedCornerShape(1.dp)
+            )
+    )
+}
+
+// 9. Hex heatmap animated transition — Mapbox property binding
+fun animateHexTransition(
+    style: Style,
+    newGeoJson: FeatureCollection,
+    durationMs: Long = 350
+) {
+    style.setStyleTransition(
+        TransitionOptions.Builder()
+            .duration(durationMs)
+            .delay(0)
+            .build()
+    )
+    style.getSourceAs<GeoJsonSource>("demand-hex-source")
+        ?.featureCollection(newGeoJson)
+}
+
+// 10. Snackbar slide-in
+@Composable
+fun PlusPulsSnackbar(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(message) { 
+        delay(50)
+        visible = true 
+    }
+    
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically(
+            initialOffsetY = { -48 },
+            animationSpec = tween(220, easing = PlusPulsEasing.FastOutSlowIn)
+        ) + fadeIn(tween(220)),
+        exit = slideOutVertically(
+            targetOffsetY = { -48 },
+            animationSpec = tween(160, easing = PlusPulsEasing.FastOutLinearIn)
+        ) + fadeOut(tween(160))
+    ) {
+        Snackbar(
+            containerColor = Color(0xFF121622),
+            contentColor = Color(0xFFEFF1F6),
+            shape = RoundedCornerShape(14.dp),
+            modifier = modifier.padding(16.dp)
+        ) {
+            Text(message, fontSize = 13.sp)
+        }
+    }
+}
+
+Animation Choreography Rules
+These rules govern how multiple animations interact on a single screen to produce the "fluent" feeling:
+
+Rule 1: Stagger, don't sync. When multiple elements animate in on screen enter, stagger their start delays by 40ms each. The topmost element starts at 0ms, the next at 40ms, then 80ms, etc. No two elements should reach their final state simultaneously — that looks robotic.
+
+Rule 2: Enter before exit completes. When replacing content (tab switch, recommendation replacement), start the incoming element's entrance at 60% through the outgoing element's exit. This creates overlap that feels continuous rather than sequential.
+
+Rule 3: Only one thing pulses. At any given moment, at most one looping animation runs on screen — the driver location pulse. If a snackbar appears, the pulse pauses for its duration. Never have two infinite-loop animations running simultaneously.
+
+Rule 4: Map transitions are slower. Map camera movements and hex color transitions use 350–400ms durations, while UI chrome uses 180–220ms. The map is heavier visually and needs more time to settle. If UI and map animate simultaneously, start UI at 0ms and map at 50ms so UI settles first and the map finishes last.
+
+Rule 5: Respect reduced motion. Check LocalAccessibilityManager.current.isReduceMotionEnabled and if true, replace all animation specs with tween(0) or snap(). Loop animations (pulse, shimmer) become static.
+
+@Composable
+fun rememberPlusPulsSpec(
+    duration: Int
+): AnimationSpec<Float> {
+    val reduceMotion = LocalAccessibilityManager.current
+        ?.isReduceMotionEnabled ?: false
+    return if (reduceMotion) {
+        snap(delayMillis = 0)
+    } else {
+        tween(
+            durationMillis = duration,
+            easing = PlusPulsEasing.FastOutSlowIn
+        )
+    }
+}
+
+Rule 6: Haptics accompany key transitions. Each haptic fires at the midpoint of the visual animation, not the start:
+
+Trigger	Haptic	Timing	Amplitude
+Button press confirmation	HapticFeedbackConstants.KEYBOARD_TAP	0ms (instant)	Low
+Recommendation arrives	HapticFeedbackConstants.LONG_PRESS	At 50% of entrance	Medium
+Sheet snaps to full expand	HapticFeedbackConstants.GESTURE_END	At snap completion	Medium
+Follow recommendation confirmed	HapticFeedbackConstants.CONFIRM	0ms	Strong
+Error occurred	HapticFeedbackConstants.REJECT	0ms	Strong
+Screen-by-Screen Animation Choreography
+Map Screen — Entrane sequence (0–800ms total)
+
+Time (ms)	Element	Animation
+0	Map tiles	Fade in from #0A0D14, 400ms
+80	Top control bar	Slide down from -20dp + fade in, 220ms
+120	Hex heatmap	Fade in from 0% to target opacity, 350ms
+160	Driver location dot	Scale 0→1, 180ms, then pulse loop begins
+200	POI markers	Fade in staggered, 160ms each, 40ms apart
+280	Bottom sheet peek	Slide up from +48dp + fade in, 280ms
+360	Sheet content	Fade in after sheet reaches position, 220ms
+Earnings Screen — Entrance sequence (0–650ms total)
+
+Time (ms)	Element	Animation
+0	Header	Fade in, 180ms
+40	Segmented control	Slide up 8dp + fade, 180ms
+80	Hero number	Count-up 0→target value, 600ms
+120	Change indicator pill	Fade in + slide right 8dp, 180ms
+160	Stat chips	Staggered fade + slide up, 160ms each, 40ms apart
+280	Bar chart bars	Grow from 0 height, 350ms, staggered 30ms per bar left-to-right
+360	Saturday tooltip badge	Fade in after bar reaches full height, 180ms
+440	Zone list rows	Staggered slide in from right, 160ms each, 30ms apart
+Day Planner Screen — Entrance sequence (0–700ms total)
+
+Time (ms)	Element	Animation
+0	Header	Fade in, 180ms
+40	Date strip	Slide up 8dp + fade, 200ms, active pill slides in last
+80	Timeline strip	Width expand from 0 to full, 300ms
+120	Timeline segments	Staggered color fill, 200ms each, 20ms apart
+160	Current time marker	Slide in from top, 180ms
+200	Stat blocks	Staggered fade + slide up, 180ms each, 50ms apart
+320	Opportunities header	Fade in, 160ms
+360	List items	Staggered slide in from right 16dp + fade, 180ms each, 40ms apart
+Subscription Screen — Entrance sequence (0–600ms total)
+
+Time (ms)	Element	Animation
+0	Logo mark	Scale 0.8→1 + fade, 280ms with slight overshoot
+80	"21-day free trial"	Fade in + slide up 8dp, 220ms
+120	Subtitle	Fade in, 180ms
+200	Plan tiers	Staggered slide in from right, 200ms each, 50ms apart, tier 1 first
+300	Teal borders on tiers 2-4	Color transition after row reaches position, 150ms
+400	Referral widget	Fade in + slide up 12dp, 220ms
+480	CTA button	Fade in + scale 0.95→1, 200ms
+Motion philosophy
+info
+Every animation above 250ms is a choreography opportunity — stagger elements, overlap enter/exit, and let the map settle slower than the chrome. The app should feel like it anticipates the user's next glance: the eye lands where the animation just finished settling.

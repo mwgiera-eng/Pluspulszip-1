@@ -11,17 +11,16 @@ export default function Login() {
     <div className="min-h-screen bg-background text-foreground grid lg:grid-cols-2">
       {/* Left Panel: Hero */}
       <div className="relative hidden lg:flex flex-col justify-between p-12 bg-secondary border-r border-border overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[150px]" />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/40">
+            <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center">
               <svg viewBox="0 0 20 20" fill="none" className="w-5 h-5">
-                <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
-                <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="white"/>
-                <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="white" fillOpacity="0.9"/>
-                <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="white"/>
-                <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+                <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
+                <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="#0A0D14"/>
+                <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
+                <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="#0A0D14"/>
+                <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
               </svg>
             </div>
             <h1 className="text-2xl font-bold">+Puls</h1>
@@ -39,28 +38,28 @@ export default function Login() {
         <div className="relative z-10 grid grid-cols-2 gap-8 mt-12">
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
-              <Zap className="w-5 h-5 text-yellow-500" />
+              <Zap className="w-5 h-5 text-muted-foreground" />
             </div>
             <h3 className="font-semibold text-lg">Surge Predictor</h3>
             <p className="text-sm text-muted-foreground">Wiedz, gdzie będzie surge, zanim to się stanie.</p>
           </div>
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
-              <ShieldCheck className="w-5 h-5 text-emerald-500" />
+              <ShieldCheck className="w-5 h-5 text-muted-foreground" />
             </div>
             <h3 className="font-semibold text-lg">Otwarta platforma</h3>
             <p className="text-sm text-muted-foreground">Każdy kierowca może dołączyć — bez zaproszenia, bez czekania.</p>
           </div>
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
-              <Users className="w-5 h-5 text-sky-400" />
+              <Users className="w-5 h-5 text-muted-foreground" />
             </div>
             <h3 className="font-semibold text-lg">Szybki start</h3>
             <p className="text-sm text-muted-foreground">Jedno kliknięcie — zaloguj się Google i korzystaj od razu.</p>
           </div>
           <div className="space-y-2">
             <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center mb-4">
-              <MapPin className="w-5 h-5 text-violet-400" />
+              <MapPin className="w-5 h-5 text-muted-foreground" />
             </div>
             <h3 className="font-semibold text-lg">Mapa na żywo</h3>
             <p className="text-sm text-muted-foreground">Strefy, heat-mapy i trasy w czasie rzeczywistym dla Krakowa.</p>
@@ -74,18 +73,17 @@ export default function Login() {
 
       {/* Right Panel: Auth */}
       <div className="flex flex-col items-center justify-center p-8 lg:p-12 relative">
-        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-background" />
 
         <div className="w-full max-w-md relative z-10 space-y-8">
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2.5 mb-4 lg:hidden">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
                 <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4">
-                  <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
-                  <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="white"/>
-                  <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="white" fillOpacity="0.9"/>
-                  <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="white"/>
-                  <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="white" fillOpacity="0.9"/>
+                  <rect x="1"  y="7"  width="2.5" height="6"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
+                  <rect x="5"  y="4"  width="2.5" height="12" rx="1.25" fill="#0A0D14"/>
+                  <rect x="9"  y="6"  width="2.5" height="8"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
+                  <rect x="13" y="2"  width="2.5" height="16" rx="1.25" fill="#0A0D14"/>
+                  <rect x="17" y="7"  width="2.5" height="6"  rx="1.25" fill="#0A0D14" fillOpacity="0.85"/>
                 </svg>
               </div>
               <span className="text-xl font-bold">+Puls</span>
@@ -96,12 +94,12 @@ export default function Login() {
             </p>
           </div>
 
-          <Card className="p-8 border-border shadow-2xl bg-card/50 backdrop-blur-sm" data-testid="card-login">
+          <Card className="p-8 border-border bg-card" data-testid="card-login">
             <div className="space-y-4">
               {/* Google sign-in button */}
               <Button
                 size="lg"
-                className="w-full h-12 text-base font-semibold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all flex items-center justify-center gap-3"
+                className="w-full h-12 text-base font-semibold flex items-center justify-center gap-3"
                 onClick={handleLogin}
                 data-testid="button-login"
               >

@@ -21,9 +21,9 @@ L.Icon.Default.mergeOptions({
 
 const KRAKOW_COORDS: [number, number] = [50.0647, 19.9450];
 
-const PURPLE_COLOR = '#a855f7';
-const GREEN_COLOR = '#10b981';
-const BLUE_COLOR = '#3b82f6';
+const PURPLE_COLOR = '#2EE6A6'; // Best $ route — teal (money)
+const GREEN_COLOR = '#8B8FA8'; // alternative routes — neutral
+const BLUE_COLOR = '#565A73'; // drive-to-pickup — tertiary
 
 interface RouteGeometryData {
   id: string;
@@ -280,17 +280,19 @@ const TIME_OFFSETS = [
   { label: '+12h', hours: 12, minutes: 0 },
 ];
 
+// Design system heat tiers: dormant → rising → hot (teal) → surge (coral)
 function getHeatColor(score: number): string {
-  if (score >= 85) return '#4ade80'; // bright lime-green — hottest
-  if (score >= 70) return '#22c55e'; // green
-  if (score >= 50) return '#f97316'; // orange
-  if (score >= 30) return '#ef4444'; // red
-  if (score >= 15) return '#818cf8'; // indigo
-  return '#3b82f6';                  // cold blue
+  if (score >= 85) return '#FF5470'; // surge — coral, single hex draws the eye
+  if (score >= 50) return '#2EE6A6'; // hot — teal, clearly visible
+  if (score >= 25) return '#2EE6A6'; // rising — teal at lower opacity
+  return '#8B8FA8';                  // dormant — muted grey, barely visible on light map
 }
 
 function getHeatOpacity(score: number): number {
-  return 0.25 + (score / 100) * 0.5;
+  if (score >= 85) return 0.3;
+  if (score >= 50) return 0.28;
+  if (score >= 25) return 0.16;
+  return 0.12;
 }
 
 /** Convert a lat/lng center + radius in metres → 6 flat-top hexagon vertices */
@@ -337,26 +339,6 @@ function ProfitHeatLayer({ heatData }: { heatData: ZoneProfitHeatResponse }) {
 
   return (
     <>
-      {/* Glow layer first (underneath): soft halo filling gaps between hexes */}
-      {zones.filter(z => z.profitScore >= 30).map((zone) => {
-        const color = getHeatColor(zone.profitScore);
-        const r = cappedRadius(zone);
-        return (
-          <Polygon
-            key={`glow-${zone.zoneId}`}
-            positions={getHexagonPoints(zone.lat, zone.lng, Math.round(r * 1.45))}
-            pathOptions={{
-              color: color,
-              fillColor: color,
-              fillOpacity: 0.06 + (zone.profitScore / 100) * 0.12,
-              weight: 0,
-              opacity: 0,
-            }}
-            interactive={false}
-          />
-        );
-      })}
-
       {zones.map((zone) => {
         const color = getHeatColor(zone.profitScore);
         const opacity = getHeatOpacity(zone.profitScore);
@@ -539,7 +521,7 @@ export function MapView({ driverPosition }: MapViewProps) {
       <div className="absolute top-2 right-2 z-[1000] flex flex-col gap-2 max-w-[260px]" data-testid="section-heat-controls">
         <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg p-2">
           <div className="flex items-center gap-1.5 mb-2">
-            <Flame className="w-3.5 h-3.5 text-orange-400" />
+            <Flame className="w-3.5 h-3.5 text-[#FFB547]" />
             <span className="text-[11px] font-semibold text-foreground">Profit Heat</span>
             {heatData && (
               <span className="text-[10px] text-muted-foreground ml-auto">
@@ -554,7 +536,7 @@ export function MapView({ driverPosition }: MapViewProps) {
                 onClick={() => setSelectedTimeIdx(idx)}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
                   selectedTimeIdx === idx
-                    ? 'bg-orange-500 text-white shadow-sm'
+                    ? 'bg-primary text-primary-foreground'
                     : 'bg-muted/50 text-muted-foreground hover:bg-muted'
                 }`}
                 data-testid={`btn-time-${offset.label.replace('+', 'plus-')}`}
@@ -572,7 +554,7 @@ export function MapView({ driverPosition }: MapViewProps) {
             onClick={() => setShowTraffic(v => !v)}
             className={`mt-1.5 w-full px-2 py-1 rounded text-[10px] font-medium transition-all ${
               showTraffic
-                ? 'bg-emerald-600 text-white shadow-sm'
+                ? 'bg-primary text-primary-foreground'
                 : 'bg-muted/50 text-muted-foreground hover:bg-muted'
             }`}
             data-testid="btn-toggle-traffic"
@@ -584,38 +566,30 @@ export function MapView({ driverPosition }: MapViewProps) {
         <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg p-1.5">
           <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[9px]">
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm" style={{ background: '#4ade80', boxShadow: '0 0 4px #4ade8088' }} />
-              <span>Hot 85+</span>
+              <div className="w-2 h-2 rounded-sm" style={{ background: '#FF5470' }} />
+              <span>Surge 85+</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm bg-green-500" />
-              <span>70+</span>
+              <div className="w-2 h-2 rounded-sm" style={{ background: '#2EE6A6' }} />
+              <span>Hot 50+</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm bg-orange-500" />
-              <span>50+</span>
+              <div className="w-2 h-2 rounded-sm" style={{ background: '#2EE6A6', opacity: 0.5 }} />
+              <span>Rising 25+</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm bg-red-500" />
-              <span>30+</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm bg-indigo-400" />
-              <span>15+</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm bg-blue-500" />
-              <span>Cold</span>
+              <div className="w-2 h-2 rounded-sm" style={{ background: '#8B8FA8', opacity: 0.6 }} />
+              <span>Dormant</span>
             </div>
             {hasPurple && (
               <div className="flex items-center gap-1" data-testid="legend-purple-route">
-                <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse border border-white/50" />
+                <div className="w-2 h-2 rounded-full animate-pulse border border-white/50" style={{ background: "#2EE6A6" }} />
                 <span>Best $</span>
               </div>
             )}
             {hasGreen && (
               <div className="flex items-center gap-1" data-testid="legend-green-routes">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse border border-white/50" />
+                <div className="w-2 h-2 rounded-full animate-pulse border border-white/50" style={{ background: "#8B8FA8" }} />
                 <span>Top 3</span>
               </div>
             )}

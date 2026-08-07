@@ -19,7 +19,7 @@ interface RoadTrafficResponse {
 }
 
 // Uniform brand green — dots differ only in speed/density, not color
-const DOT_COLOR = '#10b981';
+const DOT_COLOR = '#2EE6A6';
 
 interface PreparedRoad {
   latlngs: L.LatLng[];

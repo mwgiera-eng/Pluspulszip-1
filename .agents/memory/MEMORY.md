@@ -1,0 +1,1 @@
+- [PlusPuls design system](design-system.md) — one teal accent #2EE6A6, no gradients/glows, dark #0A0D14; light map tiles are a user-mandated exception.

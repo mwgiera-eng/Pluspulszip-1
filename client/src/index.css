@@ -9,43 +9,43 @@
   --font-sans: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Dark mode default for driver app (Night driving optimized) */
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
+  /* PlusPuls Unified Design System — one accent (teal), restrained color */
+  --background: 222 33% 6%;        /* bg.base #0A0D14 */
+  --foreground: 223 28% 95%;       /* text.primary #EFF1F6 */
 
-  --card: 222 47% 13%;
-  --card-foreground: 210 40% 98%;
+  --card: 225 31% 10%;             /* surface.1 #121622 */
+  --card-foreground: 223 28% 95%;
 
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
+  --popover: 225 31% 10%;
+  --popover-foreground: 223 28% 95%;
 
-  /* Brand Colors - premium dark-mode green palette */
-  --primary: 142 71% 45%; /* Green for "Go" / Money */
-  --primary-foreground: 144 100% 97%;
+  /* Single accent: teal — go / money / active */
+  --primary: 159 79% 54%;          /* accent.primary #2EE6A6 */
+  --primary-foreground: 222 33% 6%; /* dark text on teal */
 
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 225 28% 14%;        /* surface.2 #1A1F2E */
+  --secondary-foreground: 223 28% 95%;
 
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 225 28% 14%;
+  --muted-foreground: 232 14% 60%; /* text.secondary #8B8FA8 */
 
-  --accent: 262 80% 50%; /* Deep purple for "Surge" / Premium */
-  --accent-foreground: 210 40% 98%;
+  --accent: 225 28% 14%;           /* neutral hover/selected fill (surface.2) */
+  --accent-foreground: 223 28% 95%;
 
-  --destructive: 0 62% 30%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 350 100% 66%;     /* coral #FF5470 */
+  --destructive-foreground: 223 28% 95%;
 
-  --border: 217 33% 20%;
-  --input: 217 33% 20%;
-  --ring: 142 71% 45%;
+  --border: 224 24% 18%;           /* border.card #222838 */
+  --input: 224 24% 18%;
+  --ring: 159 79% 54%;
 
-  --radius: 0.75rem;
+  --radius: 1rem;                  /* 16dp cards */
 
-  /* Custom Status Colors */
-  --status-surge: 262 80% 60%;
-  --status-high: 0 84% 60%;
-  --status-medium: 38 92% 50%;
-  --status-low: 142 71% 45%;
+  /* Status Colors — teal/amber/coral only */
+  --status-surge: 350 100% 66%;    /* coral */
+  --status-high: 36 100% 64%;      /* amber #FFB547 */
+  --status-medium: 36 100% 64%;
+  --status-low: 159 79% 54%;       /* teal */
 }
 
 :root {
