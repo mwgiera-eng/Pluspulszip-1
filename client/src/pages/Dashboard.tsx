@@ -30,6 +30,8 @@ interface ScrapedFlight {
 interface AirportFlightsResponse {
   arrivals: ScrapedFlight[];
   departures: ScrapedFlight[];
+  arrivalsSource: "live" | "static";
+  departuresSource: "live" | "static";
 }
 
 interface StrategicAdvice {
@@ -241,6 +243,7 @@ function FlightsSection() {
   const flights = activeTab === "arrivals" ? flightData?.arrivals : flightData?.departures;
   const arrCount = flightData?.arrivals?.length || 0;
   const depCount = flightData?.departures?.length || 0;
+  const activeSource = activeTab === "arrivals" ? flightData?.arrivalsSource : flightData?.departuresSource;
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden" data-testid="section-flights">
@@ -250,8 +253,17 @@ function FlightsSection() {
           <h3 className="font-semibold text-sm">Flights — Balice Airport (KRK)</h3>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-          Live from krakowairport.pl
+          {activeSource === "static" ? (
+            <>
+              <div className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
+              Typical schedule — live data unavailable
+            </>
+          ) : (
+            <>
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              Live flight data
+            </>
+          )}
         </div>
       </div>
 
