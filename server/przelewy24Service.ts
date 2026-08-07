@@ -33,7 +33,7 @@ function getConfig(): P24Config {
 }
 
 function generateSessionId(): string {
-  return `bo_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+  return `bo_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
 }
 
 function calculateRegistrationSign(
@@ -125,16 +125,8 @@ export async function registerTransaction(
   const sessionId = generateSessionId();
   const amountInGrosze = Math.round(amount * 100);
 
-  if (config.isSandbox && !config.hasCredentials) {
-    console.log(`[P24] SANDBOX (no credentials): Simulating ${paymentMethod} transaction for ${userId}, amount: ${amount} PLN`);
-    const token = `sandbox_token_${sessionId}`;
-    return {
-      token,
-      sessionId,
-      redirectUrl: paymentMethod !== "blik" ? `/subscription?payment=sandbox&sessionId=${sessionId}` : null,
-    };
-  }
-
+  // Fail closed when credentials are missing — even in sandbox mode.
+  // Sandbox testing must use real P24 sandbox credentials.
   if (!config.hasCredentials) {
     throw new Error("Payment system not configured. Please contact the administrator.");
   }
@@ -203,19 +195,10 @@ export async function processBlikPayment(
 ): Promise<P24TransactionResult> {
   const config = getConfig();
 
-  if (config.isSandbox && !config.hasCredentials) {
-    console.log(`[P24] SANDBOX (no credentials): Simulating BLIK payment, token: ${token}`);
-    if (!/^\d{6}$/.test(blikCode)) {
-      return { success: false, error: "Invalid BLIK code format" };
-    }
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    return {
-      success: true,
-      orderId: Math.floor(Math.random() * 1000000),
-    };
-  }
-
+  // Fail closed when credentials are missing — never simulate a successful
+  // payment, since that would activate a subscription without any real charge.
   if (!config.hasCredentials) {
+    console.warn("[P24] BLIK payment rejected: credentials not configured");
     return { success: false, error: "Payment system not configured" };
   }
 
@@ -250,8 +233,16 @@ export async function processBlikPayment(
 export function verifyWebhookSignature(body: WebhookBody): boolean {
   const config = getConfig();
 
-  if (config.isSandbox && !config.hasCredentials) {
-    return true;
+  // Never bypass signature verification. Without a CRC key we cannot
+  // authenticate the webhook, so reject it. Sandbox testing should use
+  // real P24 sandbox credentials (P24_CRC_KEY etc.) instead of a bypass.
+  if (!config.crcKey) {
+    console.warn("[P24] Webhook rejected: no CRC key configured, cannot verify signature");
+    return false;
+  }
+
+  if (typeof body.sign !== "string" || body.sign.length === 0) {
+    return false;
   }
 
   const expectedSign = calculateVerificationSign(
@@ -262,7 +253,9 @@ export function verifyWebhookSignature(body: WebhookBody): boolean {
     config.crcKey
   );
 
-  return body.sign === expectedSign;
+  const provided = Buffer.from(body.sign, "utf8");
+  const expected = Buffer.from(expectedSign, "utf8");
+  return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
 
 export async function verifyTransaction(
@@ -272,12 +265,10 @@ export async function verifyTransaction(
 ): Promise<boolean> {
   const config = getConfig();
 
-  if (config.isSandbox && !config.hasCredentials) {
-    console.log(`[P24] SANDBOX: Verifying transaction orderId=${orderId}, sessionId=${sessionId}`);
-    return true;
-  }
-
+  // Never bypass verification: without credentials we cannot confirm the
+  // transaction with P24, so treat it as unverified.
   if (!config.hasCredentials) {
+    console.warn("[P24] Transaction verification rejected: credentials not configured");
     return false;
   }
 
@@ -329,5 +320,6 @@ export function isSandboxMode(): boolean {
 
 export function isConfigured(): boolean {
   const config = getConfig();
-  return config.hasCredentials || config.isSandbox;
+  // Sandbox mode still requires real (sandbox) P24 credentials to be usable.
+  return config.hasCredentials;
 }
