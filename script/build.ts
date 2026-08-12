@@ -13,6 +13,16 @@ async function build() {
     packages: "external",
     sourcemap: true,
   });
+
+  await buildServer({
+    entryPoints: ["server/migrate.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "dist/migrate.cjs",
+    packages: "external",
+    sourcemap: true,
+  });
 }
 
 build().catch((error) => {
