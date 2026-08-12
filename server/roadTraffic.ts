@@ -22,13 +22,29 @@ const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 
 const QUERY = `
 [out:json][timeout:30];
-way["highway"~"^(motorway|trunk|primary|secondary)$"](${BBOX});
+way["highway"~"^(motorway|trunk|primary|secondary|tertiary)$"](${BBOX});
 out geom;
 `;
 
 
 
 const USE_EXTERNAL_ROADS = process.env.ENABLE_EXTERNAL_SIGNALS !== "false";
+type RoadTrafficSource = "osm" | "fallback";
+const ROAD_LIMIT = 750;
+const ROAD_PRIORITY: Record<string, number> = {
+  motorway: 5,
+  trunk: 4,
+  primary: 3,
+  secondary: 2,
+  tertiary: 1,
+};
+const MAX_POINTS_BY_HIGHWAY: Record<string, number> = {
+  motorway: 56,
+  trunk: 50,
+  primary: 44,
+  secondary: 34,
+  tertiary: 24,
+};
 
 const FALLBACK_ROADS: Omit<RoadSegment, "intensity">[] = [
   {
@@ -160,10 +176,132 @@ const FALLBACK_ROADS: Omit<RoadSegment, "intensity">[] = [
       [50.077, 19.91],
     ],
   },
+  {
+    id: -113,
+    name: "Pilotow / Bora-Komorowskiego",
+    highway: "tertiary",
+    geometry: [
+      [50.074, 19.96],
+      [50.08, 19.985],
+      [50.088, 20.015],
+    ],
+  },
+  {
+    id: -114,
+    name: "Pawia / Warszawska",
+    highway: "tertiary",
+    geometry: [
+      [50.073, 19.944],
+      [50.067, 19.947],
+      [50.061, 19.951],
+    ],
+  },
+  {
+    id: -115,
+    name: "Westerplatte / Starowislna",
+    highway: "tertiary",
+    geometry: [
+      [50.064, 19.94],
+      [50.057, 19.944],
+      [50.049, 19.949],
+    ],
+  },
+  {
+    id: -116,
+    name: "Karmelicka / Krolewska",
+    highway: "tertiary",
+    geometry: [
+      [50.064, 19.932],
+      [50.071, 19.918],
+      [50.077, 19.9],
+    ],
+  },
+  {
+    id: -117,
+    name: "Monte Cassino",
+    highway: "secondary",
+    geometry: [
+      [50.049, 19.927],
+      [50.044, 19.92],
+      [50.038, 19.913],
+    ],
+  },
+  {
+    id: -118,
+    name: "Kapelanka / Tyniecka",
+    highway: "secondary",
+    geometry: [
+      [50.048, 19.916],
+      [50.035, 19.91],
+      [50.018, 19.895],
+    ],
+  },
+  {
+    id: -119,
+    name: "Wadowicka / Kalwaryjska",
+    highway: "secondary",
+    geometry: [
+      [50.036, 19.935],
+      [50.039, 19.948],
+      [50.045, 19.955],
+    ],
+  },
+  {
+    id: -120,
+    name: "Biezanowska",
+    highway: "tertiary",
+    geometry: [
+      [50.026, 19.972],
+      [50.014, 19.987],
+      [50.003, 20.001],
+    ],
+  },
+  {
+    id: -121,
+    name: "Stella-Sawickiego",
+    highway: "secondary",
+    geometry: [
+      [50.08, 20.0],
+      [50.077, 20.025],
+      [50.073, 20.05],
+    ],
+  },
+  {
+    id: -122,
+    name: "Igołomska",
+    highway: "secondary",
+    geometry: [
+      [50.071, 20.035],
+      [50.073, 20.065],
+      [50.077, 20.09],
+    ],
+  },
+  {
+    id: -123,
+    name: "Kamienna / Pradnicka",
+    highway: "tertiary",
+    geometry: [
+      [50.073, 19.938],
+      [50.084, 19.94],
+      [50.096, 19.943],
+    ],
+  },
+  {
+    id: -124,
+    name: "Meissnera / Lema",
+    highway: "tertiary",
+    geometry: [
+      [50.067, 19.982],
+      [50.067, 20.003],
+      [50.069, 20.018],
+    ],
+  },
 ];
 
 function useFallbackRoads(reason: string): Omit<RoadSegment, "intensity">[] {
   lastFetchError = reason;
+  roadSource = "fallback";
+  cachedAt = new Date().toISOString();
   cachedRoads = FALLBACK_ROADS;
   console.warn(`[roadTraffic] Using bundled Krakow road geometry fallback: ${reason}`);
   return cachedRoads;
@@ -172,6 +310,22 @@ function useFallbackRoads(reason: string): Omit<RoadSegment, "intensity">[] {
 let cachedRoads: Omit<RoadSegment, "intensity">[] | null = null;
 let fetchPromise: Promise<Omit<RoadSegment, "intensity">[]> | null = null;
 let lastFetchError: string | null = null;
+let roadSource: RoadTrafficSource | null = null;
+let cachedAt: string | null = null;
+
+function simplifyGeometry(geometry: [number, number][], highway: string): [number, number][] {
+  const maxPoints = MAX_POINTS_BY_HIGHWAY[highway] ?? 24;
+  if (geometry.length <= maxPoints) return geometry;
+
+  const simplified: [number, number][] = [];
+  const step = Math.ceil(geometry.length / maxPoints);
+  for (let i = 0; i < geometry.length; i += step) {
+    simplified.push(geometry[i]);
+  }
+  const last = geometry[geometry.length - 1];
+  if (simplified[simplified.length - 1] !== last) simplified.push(last);
+  return simplified;
+}
 
 async function fetchRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
   const res = await fetch(OVERPASS_URL, {
@@ -196,7 +350,17 @@ async function fetchRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
       geometry: el.geometry.map((g: any) => [g.lat, g.lon] as [number, number]),
     });
   }
-  return roads;
+  return roads
+    .sort((a, b) => {
+      const priority = (ROAD_PRIORITY[b.highway] ?? 0) - (ROAD_PRIORITY[a.highway] ?? 0);
+      if (priority !== 0) return priority;
+      return b.geometry.length - a.geometry.length;
+    })
+    .slice(0, ROAD_LIMIT)
+    .map((road) => ({
+      ...road,
+      geometry: simplifyGeometry(road.geometry, road.highway),
+    }));
 }
 
 async function getRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
@@ -213,6 +377,8 @@ async function getRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
           return useFallbackRoads(`Overpass returned only ${roads.length} usable roads`);
         }
         cachedRoads = roads;
+        roadSource = "osm";
+        cachedAt = new Date().toISOString();
         lastFetchError = null;
         console.log(`[roadTraffic] Cached ${roads.length} road segments from OSM`);
         return roads;
@@ -283,6 +449,7 @@ const HIGHWAY_WEIGHT: Record<string, number> = {
   trunk: 0.95,
   primary: 0.85,
   secondary: 0.65,
+  tertiary: 0.45,
 };
 
 export async function getRoadTraffic(): Promise<{
@@ -290,6 +457,8 @@ export async function getRoadTraffic(): Promise<{
   generatedAt: string;
   hour: number;
   baseLevel: number;
+  source: RoadTrafficSource | null;
+  roadCount: number;
 }> {
   const roads = await getRoads();
 
@@ -323,6 +492,8 @@ export async function getRoadTraffic(): Promise<{
     generatedAt: now.toISOString(),
     hour: krakowHour,
     baseLevel: Math.round(base * 100) / 100,
+    source: roadSource,
+    roadCount: withIntensity.length,
   };
 }
 
@@ -330,6 +501,8 @@ export function getRoadTrafficStatus() {
   return {
     cached: !!cachedRoads,
     roadCount: cachedRoads?.length ?? 0,
+    source: roadSource,
+    cachedAt,
     lastError: lastFetchError,
   };
 }
