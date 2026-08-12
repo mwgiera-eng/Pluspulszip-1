@@ -199,11 +199,12 @@
   pointer-events: none;
   position: absolute;
   inset: 0;
-  z-index: 520;
+  z-index: 260;
+  opacity: .62;
   background:
-    radial-gradient(circle at 50% 48%, transparent 42%, hsl(222 46% 4% / .42) 100%),
-    linear-gradient(180deg, hsl(159 79% 54% / .06), transparent 16%, transparent 78%, hsl(159 79% 54% / .07));
-  mix-blend-mode: screen;
+    radial-gradient(circle at 50% 48%, transparent 48%, hsl(222 46% 4% / .28) 100%),
+    linear-gradient(180deg, hsl(159 79% 54% / .025), transparent 22%, transparent 82%, hsl(159 79% 54% / .025));
+  mix-blend-mode: normal;
 }
 
 .pluspuls-map-panel,
@@ -216,11 +217,11 @@
 }
 
 .pluspuls-hex-grid {
-  filter: drop-shadow(0 0 7px hsl(159 79% 54% / .24));
+  filter: drop-shadow(0 0 2px hsl(159 79% 54% / .12));
 }
 
 .leaflet-route-glow path {
-  filter: drop-shadow(0 0 8px currentColor);
+  filter: drop-shadow(0 0 3px currentColor);
 }
 
 .leaflet-marker-icon {
