@@ -1,10 +1,10 @@
 /**
  * Road traffic simulation for Krakow.
  *
- * Fetches real road geometries (motorway/trunk/primary/secondary) from
- * OpenStreetMap's Overpass API once, caches them in memory, and attaches a
- * simulated traffic intensity to each road segment based on time of day and
- * a stable per-road variation.
+ * Prefers the same OSRM route geometries used by the navigation engine, so
+ * animated traffic dots follow real routed roads. OSM/Overpass and bundled
+ * corridors remain as backups, with simulated intensity based on time of day
+ * and stable per-road variation.
  */
 
 import { fetchMultipleRouteGeometries } from "./osrmService";
@@ -31,7 +31,7 @@ out geom;
 
 
 
-const USE_EXTERNAL_ROADS = process.env.ENABLE_EXTERNAL_SIGNALS !== "false";
+const USE_EXTERNAL_ROADS = process.env.ENABLE_ROAD_TRAFFIC !== "false";
 type RoadTrafficSource = "navigation" | "osm" | "fallback";
 const ROAD_LIMIT = 750;
 const NAVIGATION_ROUTE_LIMIT = 16;
@@ -502,7 +502,7 @@ async function getRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
   if (cachedRoads) return cachedRoads;
 
   if (!USE_EXTERNAL_ROADS) {
-    return useFallbackRoads("ENABLE_EXTERNAL_SIGNALS is false");
+    return useFallbackRoads("ENABLE_ROAD_TRAFFIC is false");
   }
 
   if (!fetchPromise) {
