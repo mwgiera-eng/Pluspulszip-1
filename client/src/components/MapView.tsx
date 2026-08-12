@@ -280,6 +280,25 @@ const TIME_OFFSETS = [
   { label: '+12h', hours: 12, minutes: 0 },
 ];
 
+const MAP_LAYER_OPTIONS = [
+  { id: 'heatmap', label: 'Heatmap', helper: 'hex demand' },
+  { id: 'traffic', label: 'Signals', helper: 'live traffic' },
+  { id: 'points', label: 'Points', helper: 'events & POIs' },
+  { id: 'routes', label: 'Routes', helper: 'best trips' },
+  { id: 'zones', label: 'Zones', helper: 'score labels' },
+] as const;
+
+type MapLayerId = typeof MAP_LAYER_OPTIONS[number]['id'];
+type LayerState = Record<MapLayerId, boolean>;
+
+const DEFAULT_VISIBLE_LAYERS: LayerState = {
+  heatmap: true,
+  traffic: true,
+  points: false,
+  routes: false,
+  zones: false,
+};
+
 // Design system heat tiers: dormant → rising → hot (teal) → surge (coral)
 function getHeatColor(score: number): string {
   if (score >= 85) return '#FF5470'; // surge — coral, single hex draws the eye
@@ -502,8 +521,12 @@ export function MapView({ driverPosition }: MapViewProps) {
   const { data, isLoading, error } = useMapData();
   const [routeGeometries, setRouteGeometries] = useState<RouteGeometryData[]>([]);
   const [selectedTimeIdx, setSelectedTimeIdx] = useState(0);
-  const [showTraffic, setShowTraffic] = useState(true);
+  const [visibleLayers, setVisibleLayers] = useState<LayerState>(DEFAULT_VISIBLE_LAYERS);
   const refreshRef = useRef<NodeJS.Timeout | null>(null);
+
+  const toggleLayer = (layer: MapLayerId) => {
+    setVisibleLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
+  };
 
   const selectedOffset = TIME_OFFSETS[selectedTimeIdx];
   const { data: heatData } = useQuery<ZoneProfitHeatResponse>({
@@ -577,6 +600,7 @@ export function MapView({ driverPosition }: MapViewProps) {
   const hasPurple = routeGeometries.some(r => r.role === "nearest_profitable");
   const hasGreen = routeGeometries.some(r => r.role === "top_route");
   const hasDriveToPickup = routeGeometries.some(r => r.role === "drive_to_pickup");
+  const activeLayerCount = Object.values(visibleLayers).filter(Boolean).length;
 
   return (
     <div className="pluspuls-map-shell w-full h-full rounded-xl overflow-hidden relative z-0">
@@ -596,16 +620,18 @@ export function MapView({ driverPosition }: MapViewProps) {
 
         <div className="pluspuls-map-vignette" />
 
-        <HexGridLayer
-          hoursAhead={selectedOffset.hours}
-          minutesAhead={selectedOffset.minutes}
-          live={selectedTimeIdx === 0}
-        />
-        {heatData && <ProfitHeatLayer heatData={heatData} />}
+        {visibleLayers.heatmap && (
+          <HexGridLayer
+            hoursAhead={selectedOffset.hours}
+            minutesAhead={selectedOffset.minutes}
+            live={selectedTimeIdx === 0}
+          />
+        )}
+        {visibleLayers.zones && heatData && <ProfitHeatLayer heatData={heatData} />}
 
-        <TrafficLayer enabled={showTraffic} />
+        <TrafficLayer enabled={visibleLayers.traffic} />
 
-        {data.pois.map((poi) => (
+        {visibleLayers.points && data.pois.map((poi) => (
           <Marker 
             key={poi.id} 
             position={[Number(poi.lat), Number(poi.lng)]}
@@ -623,7 +649,7 @@ export function MapView({ driverPosition }: MapViewProps) {
           </Marker>
         ))}
 
-        {routeGeometries.length > 0 && (
+        {visibleLayers.routes && routeGeometries.length > 0 && (
           <RoadRouteOverlay routes={routeGeometries} />
         )}
 
@@ -639,6 +665,32 @@ export function MapView({ driverPosition }: MapViewProps) {
       </div>
 
       <div className="absolute top-2 right-2 z-[1000] flex flex-col gap-2 max-w-[280px]" data-testid="section-heat-controls">
+        <div className="pluspuls-map-panel p-2.5" data-testid="section-layer-controls">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-semibold text-foreground uppercase tracking-[0.16em]">Map Layers</span>
+            <span className="text-[9px] text-muted-foreground">{activeLayerCount}/5 on</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {MAP_LAYER_OPTIONS.map((layer) => {
+              const enabled = visibleLayers[layer.id];
+              return (
+                <button
+                  key={layer.id}
+                  onClick={() => toggleLayer(layer.id)}
+                  className={`text-left rounded-lg border px-2 py-1.5 transition-all ${
+                    enabled
+                      ? 'border-primary/50 bg-primary/15 text-foreground shadow-[0_0_14px_hsl(159_79%_54%_/_0.12)]'
+                      : 'border-border/70 bg-[#101724]/70 text-muted-foreground hover:text-foreground hover:border-primary/30'
+                  }`}
+                  data-testid={`btn-layer-${layer.id}`}
+                >
+                  <span className="block text-[10px] font-bold">{enabled ? '● ' : '○ '}{layer.label}</span>
+                  <span className="block text-[8px] opacity-70 leading-none mt-0.5">{layer.helper}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="pluspuls-map-panel p-2.5">
           <div className="flex items-center gap-1.5 mb-2">
             <Radar className="w-3.5 h-3.5 text-primary" />
@@ -670,55 +722,67 @@ export function MapView({ driverPosition }: MapViewProps) {
               {heatData.transitionNarrative}
             </p>
           )}
-          <button
-            onClick={() => setShowTraffic(v => !v)}
-            className={`mt-2 w-full px-2 py-1.5 rounded-md text-[10px] font-bold transition-all ${
-              showTraffic
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-            }`}
-            data-testid="btn-toggle-traffic"
-          >
-            {showTraffic ? '● Ruch drogowy: ON' : '○ Ruch drogowy: OFF'}
-          </button>
         </div>
 
-        <div className="pluspuls-map-panel p-2">
+        <div className="pluspuls-map-panel p-2" data-testid="section-map-legend">
           <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[9px] text-foreground/90">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm" style={{ background: '#FF5470' }} />
-              <span>Surge 85+</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm" style={{ background: '#2EE6A6' }} />
-              <span>Hot 50+</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm" style={{ background: '#2EE6A6', opacity: 0.5 }} />
-              <span>Rising 25+</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm" style={{ background: '#8B8FA8', opacity: 0.6 }} />
-              <span>Dormant</span>
-            </div>
-            {hasPurple && (
+            {visibleLayers.heatmap && (
+              <>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm" style={{ background: '#FF5470' }} />
+                  <span>Surge</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm" style={{ background: '#2EE6A6' }} />
+                  <span>Hot hex</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-sm" style={{ background: '#8B8FA8', opacity: 0.6 }} />
+                  <span>Quiet</span>
+                </div>
+              </>
+            )}
+            {visibleLayers.traffic && (
+              <>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full" style={{ background: '#2EE6A6' }} />
+                  <span>Flow</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full" style={{ background: '#FFB547' }} />
+                  <span>Heavy</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full" style={{ background: '#FF5470' }} />
+                  <span>Jam</span>
+                </div>
+              </>
+            )}
+            {visibleLayers.routes && hasPurple && (
               <div className="flex items-center gap-1" data-testid="legend-purple-route">
                 <div className="w-2 h-2 rounded-full animate-pulse border border-white/50" style={{ background: "#2EE6A6" }} />
                 <span>Best $</span>
               </div>
             )}
-            {hasGreen && (
+            {visibleLayers.routes && hasGreen && (
               <div className="flex items-center gap-1" data-testid="legend-green-routes">
                 <div className="w-2 h-2 rounded-full animate-pulse border border-white/50" style={{ background: "#8B8FA8" }} />
                 <span>Top 3</span>
               </div>
             )}
-            {hasDriveToPickup && (
+            {visibleLayers.routes && hasDriveToPickup && (
               <div className="flex items-center gap-1" data-testid="legend-drive-route">
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse border border-white/50" />
                 <span>Drive</span>
               </div>
             )}
+            {visibleLayers.points && (
+              <div className="flex items-center gap-1">
+                <MapPin className="w-2.5 h-2.5 text-sky-300" />
+                <span>POIs</span>
+              </div>
+            )}
+            {activeLayerCount === 0 && <span className="text-muted-foreground">Base map only</span>}
           </div>
         </div>
       </div>
