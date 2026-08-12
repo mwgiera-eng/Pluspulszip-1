@@ -11,7 +11,7 @@ import { generateRecommendations, getArrivalsWindowEstimate, generateLocationAwa
 import { getSubscriptionStatus, activateSubscription } from "./subscriptionService";
 import { registerTransaction, processBlikPayment, verifyWebhookSignature, verifyTransaction, isSandboxMode, type PaymentMethod } from "./przelewy24Service";
 import { getPopularRoutes } from "./popularRoutes";
-import { getRoadTraffic } from "./roadTraffic";
+import { getRoadTraffic, getRoadTrafficStatus } from "./roadTraffic";
 import { getHexHeat } from "./hexHeat";
 import { fetchMultipleRouteGeometries } from "./osrmService";
 import { startEventsRefreshLoop, getActiveEvents, refreshEvents, getEventsCacheMeta, getAllCachedEvents } from "./krakowEvents";
@@ -812,6 +812,11 @@ export async function registerRoutes(
   });
 
   // === Road Traffic Simulation (OSM geometries + simulated intensity) ===
+  app.get("/api/road-traffic/status", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.json(getRoadTrafficStatus());
+  });
+
   app.get("/api/road-traffic", async (_req, res) => {
     try {
       const data = await getRoadTraffic();
