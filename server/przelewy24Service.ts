@@ -63,13 +63,17 @@ function getAuthHeader(config: P24Config): string {
 }
 
 function getAppUrl(): string {
+  const configuredUrl = process.env.APP_BASE_URL || process.env.PUBLIC_APP_URL || process.env.RENDER_EXTERNAL_URL;
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/+$/, "");
+  }
   if (process.env.REPLIT_DEPLOYMENT_URL) {
     return `https://${process.env.REPLIT_DEPLOYMENT_URL}`;
   }
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
-  return "https://localhost:5000";
+  return `http://localhost:${process.env.PORT || "5000"}`;
 }
 
 export type PaymentMethod = "blik" | "card" | "transfer" | "all";
