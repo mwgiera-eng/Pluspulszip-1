@@ -28,7 +28,7 @@ out geom;
 
 
 
-const USE_EXTERNAL_ROADS = process.env.ENABLE_EXTERNAL_SIGNALS === "true";
+const USE_EXTERNAL_ROADS = process.env.ENABLE_EXTERNAL_SIGNALS !== "false";
 
 const FALLBACK_ROADS: Omit<RoadSegment, "intensity">[] = [
   {
@@ -203,7 +203,7 @@ async function getRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
   if (cachedRoads) return cachedRoads;
 
   if (!USE_EXTERNAL_ROADS) {
-    return useFallbackRoads("ENABLE_EXTERNAL_SIGNALS is not true");
+    return useFallbackRoads("ENABLE_EXTERNAL_SIGNALS is false");
   }
 
   if (!fetchPromise) {
