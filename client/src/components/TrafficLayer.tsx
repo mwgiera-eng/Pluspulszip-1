@@ -55,6 +55,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
   const rafRef = useRef<number>(0);
   const preparedRef = useRef<PreparedRoad[]>([]);
   const refreshVisibleRef = useRef<() => void>(() => {});
+  const zoomRef = useRef<number>(map.getZoom());
 
   const { data } = useQuery<RoadTrafficResponse>({
     queryKey: ['/api/road-traffic'],
@@ -81,14 +82,14 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
           cumLen.push(cumLen[i - 1] + latlngs[i - 1].distanceTo(latlngs[i]));
         }
         const totalLen = cumLen[cumLen.length - 1];
-        // dot density: enough moving beads to read as traffic even in public demo mode.
-        const dotSpacing = IS_MOBILE ? 300 : 210;
+        // Fine-grained signals: many tiny beads, with density driven by traffic intensity.
+        const dotSpacing = IS_MOBILE ? 130 : 95;
         const dotCount = Math.min(
-          IS_MOBILE ? 14 : 26,
-          Math.max(2, Math.round((totalLen / dotSpacing) * (0.35 + r.intensity * 0.9))),
+          IS_MOBILE ? 42 : 78,
+          Math.max(3, Math.round((totalLen / dotSpacing) * (0.42 + r.intensity * 0.85))),
         );
-        // Faster than real traffic so movement is visible on dashboard-scale maps.
-        const speed = 46 - 34 * r.intensity;
+        // Heavier traffic moves slower; clear roads keep a steady flow.
+        const speed = 30 - 23 * r.intensity;
         const phases = Array.from({ length: dotCount }, (_, i) =>
           (i / dotCount + ((r.id * 0.618) % 1)) % 1,
         );
@@ -116,7 +117,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     canvas.style.top = '0';
     canvas.style.left = '0';
     canvas.style.pointerEvents = 'none';
-    canvas.style.zIndex = '610'; // above insight overlays, below controls
+    canvas.style.zIndex = '430'; // above heat polygons, below markers and controls
     map.getContainer().appendChild(canvas);
     canvasRef.current = canvas;
 
@@ -165,7 +166,12 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     };
     refreshVisible();
     refreshVisibleRef.current = refreshVisible;
-    map.on('moveend zoomend', refreshVisible);
+    const refreshZoom = () => {
+      zoomRef.current = map.getZoom();
+      refreshVisible();
+    };
+    map.on('moveend', refreshVisible);
+    map.on('zoomend', refreshZoom);
 
     const frame = (now: number) => {
       rafRef.current = requestAnimationFrame(frame);
@@ -184,15 +190,16 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         ctx.fillStyle = color;
         ctx.strokeStyle = color;
         ctx.shadowColor = color;
-        ctx.shadowBlur = 7;
-        ctx.lineWidth = IS_MOBILE ? 1.0 : 1.4;
+        const zoomScale = Math.min(1.35, Math.max(0.62, 0.68 + (zoomRef.current - 11) * 0.12));
+        ctx.shadowBlur = IS_MOBILE ? 1.5 : 2.5;
+        ctx.lineWidth = (IS_MOBILE ? 0.45 : 0.6) * zoomScale;
         ctx.lineCap = 'round';
 
         const tails: Array<{ from: L.Point; to: L.Point }> = [];
         const dots: Array<{ x: number; y: number; radius: number }> = [];
         for (const road of visibleRoads) {
           if (road.color !== color) continue;
-          const tailLength = Math.min(42, Math.max(10, road.speed * 0.9));
+          const tailLength = Math.min(18, Math.max(6, road.speed * 0.45));
           for (let d = 0; d < road.dotCount; d++) {
             const dist =
               ((road.phases[d] * road.totalLen + elapsed * road.speed) %
@@ -205,7 +212,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
             ) continue;
 
             const tailDist = dist - tailLength;
-            const pulse = 0.32 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2);
+            const pulse = 0.1 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2);
             if (tailDist > 0) {
               const tail = map.latLngToContainerPoint(pointAt(road, tailDist));
               tails.push({ from: tail, to: pt });
@@ -213,12 +220,12 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
             dots.push({
               x: pt.x,
               y: pt.y,
-              radius: 1.75 + road.intensity * 0.85 + pulse,
+              radius: Math.max(0.55, (0.72 + road.intensity * 0.42 + pulse) * zoomScale),
             });
           }
         }
 
-        ctx.globalAlpha = 0.32;
+        ctx.globalAlpha = 0.18;
         ctx.beginPath();
         for (const tail of tails) {
           ctx.moveTo(tail.from.x, tail.from.y);
@@ -226,7 +233,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         }
         ctx.stroke();
 
-        ctx.globalAlpha = 0.95;
+        ctx.globalAlpha = 0.82;
         ctx.beginPath();
         for (const dot of dots) {
           ctx.moveTo(dot.x + dot.radius, dot.y);
@@ -242,7 +249,8 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     return () => {
       cancelAnimationFrame(rafRef.current);
       map.off('resize', resize);
-      map.off('moveend zoomend', refreshVisible);
+      map.off('moveend', refreshVisible);
+      map.off('zoomend', refreshZoom);
       refreshVisibleRef.current = () => {};
       canvas.remove();
       canvasRef.current = null;
