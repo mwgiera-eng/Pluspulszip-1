@@ -815,7 +815,7 @@ export async function registerRoutes(
   app.get("/api/road-traffic", async (_req, res) => {
     try {
       const data = await getRoadTraffic();
-      res.setHeader("Cache-Control", "public, max-age=60");
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.json(data);
     } catch (err) {
       res.status(503).json({ error: "Road data unavailable", detail: String(err) });
