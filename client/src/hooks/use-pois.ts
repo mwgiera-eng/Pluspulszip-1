@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type InsertPoi } from "@shared/routes";
+import { api } from "@shared/routes";
+import type { InsertPoi } from "@shared/schema";
 
 // GET /api/pois
 export function usePois() {
