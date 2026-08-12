@@ -1,11 +1,24 @@
 # ShiftOptima - Driver Intelligence Platform
 
+## Production deployment (Render)
+
+This repository now includes a Render Blueprint (`render.yaml`) for the web
+service and PostgreSQL database. Deploy the Blueprint, set `ADMIN_EMAIL`, and
+Render will generate the session secret, apply the Drizzle schema before each
+release, build the client/server bundle, and monitor `/api/health`.
+
+Authentication is first-party email/password authentication and does not depend
+on Replit. Passwords are salted and hashed, sessions are persisted in PostgreSQL,
+and production cookies are secure. Copy `.env.example` for local configuration,
+run `npm run db:push`, then use `npm run dev`. The account matching
+`ADMIN_EMAIL` is approved as the initial administrator when it registers.
+
 ## Overview
 
 ShiftOptima is a real-time optimization web application for professional ride-hailing drivers in Krakow, Poland. It provides demand analytics, zone-based positioning recommendations, earnings tracking from CSV uploads, and an interactive live map to help drivers maximize their revenue.
 
 Key features:
-- **Auth Gating with Registration Approval**: Full flow — Replit OIDC login → account type selection → admin approval check (status="pending" shows Pending screen) → dashboard access. New users get status="pending"; admin must approve via Admin Console.
+- **Auth Gating with Registration Approval**: Full flow — email/password registration → account type selection → admin approval check (status="pending" shows Pending screen) → dashboard access. New users get status="pending"; admin must approve via Admin Console.
 - **Account Type Selection**: New users choose between "Independent Driver" (individual, green accent) or "Fleet Manager" (company/provider, violet accent) during onboarding. Fleet managers enter a company name. Account type is stored in users.accountType field and shown as badges in the Admin Console.
 - **User Registration System**: users.status field (pending/approved/rejected). New users see a Pending Approval waiting screen. Admins can approve/reject registrations from the Admin Console with immediate effect.
 - **Public Read-Only Access**: / and /map routes are accessible without login via PublicRoute. Unauthenticated visitors see the live map, zone heat, popular routes, and flights. Personal data (earnings, AI advice, recommendations) is hidden; a top banner prompts register/sign-in.
@@ -60,7 +73,7 @@ Preferred communication style: Simple, everyday language.
 ### Backend
 - **Runtime**: Node.js 20 with Express 5 (TypeScript)
 - **Database**: PostgreSQL via Drizzle ORM
-- **Auth**: Replit OIDC (OpenID Connect) via @replit/repl-auth-oidc, Passport.js
+- **Auth**: First-party email/password accounts with scrypt password hashing, Passport.js sessions, and PostgreSQL session storage
 - **Payments**: Przelewy24 (P24) API integration with BLIK, card, and bank transfer support. PayPal hosted button available as alternative.
 - **External APIs**: OSRM (road routing), Kraków Airport flight board scraping, Kraków.travel events scraping
 
@@ -85,7 +98,7 @@ Preferred communication style: Simple, everyday language.
 - `shared/copilot.ts` — Copilot types (DataSourceId, CopilotMode, etc.)
 
 ## Admin Access
-Admin email: `obeydefiance@icloud.com` — set in `server/replit_integrations/auth/replitAuth.ts`
+Admin email: set `ADMIN_EMAIL` in the deployment environment before registering the initial administrator.
 
 ## Deployment
-Live at: `https://optima-codeinside.replit.app`
+Use the included `render.yaml` Blueprint to deploy the application and its PostgreSQL database on Render.
