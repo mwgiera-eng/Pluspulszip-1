@@ -138,8 +138,9 @@ export async function registerRoutes(
 
   app.post("/api/admin/users/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = await authStorage.updateUserStatus(String(req.params.id), "approved");
-      res.json(publicUser(user));
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const user = await authStorage.updateUserStatus(id, "approved");
+      res.json(user);
     } catch (err) {
       res.status(500).json({ message: "Failed to approve user" });
     }
@@ -147,8 +148,9 @@ export async function registerRoutes(
 
   app.post("/api/admin/users/:id/reject", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = await authStorage.updateUserStatus(String(req.params.id), "rejected");
-      res.json(publicUser(user));
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const user = await authStorage.updateUserStatus(id, "rejected");
+      res.json(user);
     } catch (err) {
       res.status(500).json({ message: "Failed to reject user" });
     }
