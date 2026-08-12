@@ -133,7 +133,8 @@ export async function registerRoutes(
 
   app.post("/api/admin/users/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = await authStorage.updateUserStatus(req.params.id, "approved");
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const user = await authStorage.updateUserStatus(id, "approved");
       res.json(user);
     } catch (err) {
       res.status(500).json({ message: "Failed to approve user" });
@@ -142,7 +143,8 @@ export async function registerRoutes(
 
   app.post("/api/admin/users/:id/reject", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = await authStorage.updateUserStatus(req.params.id, "rejected");
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const user = await authStorage.updateUserStatus(id, "rejected");
       res.json(user);
     } catch (err) {
       res.status(500).json({ message: "Failed to reject user" });
@@ -182,7 +184,7 @@ export async function registerRoutes(
         const lng = parseFloat(u.lastSeenLng);
         let minDist = Infinity;
         for (const zone of allZones) {
-          const d = haversine(lat, lng, zone.lat, zone.lng);
+          const d = haversine(lat, lng, Number(zone.lat), Number(zone.lng));
           if (d < minDist) { minDist = d; nearestZone = zone.name; }
         }
         if (minDist > 5) nearestZone = "Outside Kraków";
