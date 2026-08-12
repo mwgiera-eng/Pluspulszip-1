@@ -305,69 +305,249 @@ export class DatabaseStorage implements IStorage {
 }
 
 
-// If DB is disabled, export a safe Noop storage implementation so the app can start
+// If DB is disabled, export a safe demo storage implementation so the public
+// Render preview still shows Krakow demand data before Postgres is configured.
+const demoUpdatedAt = new Date("2026-08-12T00:00:00.000Z");
+
+const DEMO_ZONES: Zone[] = [
+  {
+    id: 1,
+    name: "Kraków Airport (Balice)",
+    type: "airport",
+    lat: "50.0777",
+    lng: "19.7848",
+    radius: 2000,
+    description: "Main international airport, high demand for pickups.",
+    demandLevel: "surge",
+    surgeMultiplier: "1.5",
+    updatedAt: demoUpdatedAt,
+  },
+  {
+    id: 2,
+    name: "Old Town (Rynek)",
+    type: "center",
+    lat: "50.0614",
+    lng: "19.9366",
+    radius: 1000,
+    description: "Historical center, high tourist traffic.",
+    demandLevel: "high",
+    surgeMultiplier: "1.2",
+    updatedAt: demoUpdatedAt,
+  },
+  {
+    id: 3,
+    name: "Kazimierz",
+    type: "nightlife",
+    lat: "50.0526",
+    lng: "19.9455",
+    radius: 800,
+    description: "Nightlife district, busy in evenings/weekends.",
+    demandLevel: "medium",
+    surgeMultiplier: "1.3",
+    updatedAt: demoUpdatedAt,
+  },
+  {
+    id: 4,
+    name: "Kraków Główny Station",
+    type: "station",
+    lat: "50.0678",
+    lng: "19.9470",
+    radius: 600,
+    description: "Main railway station and bus terminal. Commuters and travelers.",
+    demandLevel: "high",
+    surgeMultiplier: "1.3",
+    updatedAt: demoUpdatedAt,
+  },
+  {
+    id: 5,
+    name: "Nowa Huta",
+    type: "residential",
+    lat: "50.0725",
+    lng: "20.0375",
+    radius: 2500,
+    description: "Large residential district east of center.",
+    demandLevel: "low",
+    surgeMultiplier: "1.0",
+    updatedAt: demoUpdatedAt,
+  },
+  {
+    id: 6,
+    name: "Galeria Krakowska & Bonarka",
+    type: "mall",
+    lat: "50.0669",
+    lng: "19.9458",
+    radius: 800,
+    description: "Major shopping malls. Busy afternoons and weekends.",
+    demandLevel: "medium",
+    surgeMultiplier: "1.1",
+    updatedAt: demoUpdatedAt,
+  },
+  {
+    id: 7,
+    name: "Tauron Arena",
+    type: "event",
+    lat: "50.0697",
+    lng: "20.0108",
+    radius: 1000,
+    description: "Large event venue. Major surge when concerts and events end.",
+    demandLevel: "medium",
+    surgeMultiplier: "1.0",
+    updatedAt: demoUpdatedAt,
+  },
+  {
+    id: 8,
+    name: "Wawel & Planty Area",
+    type: "tourism",
+    lat: "50.0540",
+    lng: "19.9354",
+    radius: 1200,
+    description: "Wawel Castle, Planty gardens, and tourist corridor.",
+    demandLevel: "high",
+    surgeMultiplier: "1.2",
+    updatedAt: demoUpdatedAt,
+  },
+];
+
+const DEMO_POIS: Poi[] = [
+  {
+    id: 1,
+    name: "Wawel Royal Castle",
+    category: "tourism",
+    lat: "50.0540",
+    lng: "19.9354",
+    openingTime: "09:00",
+    closingTime: "17:00",
+    popularityScore: 10,
+    description: "Major tourist attraction.",
+  },
+  {
+    id: 2,
+    name: "Schindler's Factory",
+    category: "tourism",
+    lat: "50.0474",
+    lng: "19.9618",
+    openingTime: "10:00",
+    closingTime: "18:00",
+    popularityScore: 9,
+    description: "Popular museum.",
+  },
+  {
+    id: 3,
+    name: "Main Square Hotels",
+    category: "tourism",
+    lat: "50.0614",
+    lng: "19.9366",
+    openingTime: "00:00",
+    closingTime: "23:59",
+    popularityScore: 10,
+    description: "Hotel and restaurant pickup corridor.",
+  },
+];
+
+const DEMO_RECOMMENDATIONS: Recommendation[] = [
+  {
+    id: 1,
+    zoneId: null,
+    action: "MOVE",
+    reason: "Najwyzszy przewidywany potencjal zarobku w Krakowie.",
+    targetZoneId: 1,
+    validFrom: demoUpdatedAt,
+    validUntil: new Date(demoUpdatedAt.getTime() + 60 * 60 * 1000),
+    priority: 10,
+  },
+];
+
 export let storage: IStorage;
 if (!DB_ENABLED) {
-  class NoopStorage implements IStorage {
-    // Zones
-    async getZones() { return []; }
-    async getZone(_id: number) { return undefined; }
-    async createZone(_zone: InsertZone) { throw new Error('DB not enabled'); }
-    async updateZone(_id: number, _updates: Partial<InsertZone>) { throw new Error('DB not enabled'); }
-    async deleteZone(_id: number) { /* no-op */ }
+  class DemoStorage implements IStorage {
+    private zones = [...DEMO_ZONES];
+    private pois = [...DEMO_POIS];
+    private recommendations = [...DEMO_RECOMMENDATIONS];
 
-    // Earnings
-    async getEarnings(_userId: string) { return []; }
-    async createEarning(_earning: InsertEarning) { throw new Error('DB not enabled'); }
-    async getEarningsStats(_userId: string) { return { totalEarnings: 0, totalTrips: 0, averagePerTrip: 0 }; }
+    async getZones(): Promise<Zone[]> { return this.zones; }
+    async getZone(id: number): Promise<Zone | undefined> { return this.zones.find((zone) => zone.id === id); }
+    async createZone(zone: InsertZone): Promise<Zone> {
+      const created = { ...zone, id: this.zones.length + 1, updatedAt: new Date() } as Zone;
+      this.zones.push(created);
+      return created;
+    }
+    async updateZone(id: number, updates: Partial<InsertZone>): Promise<Zone> {
+      const existing = await this.getZone(id);
+      if (!existing) throw new Error("Zone not found");
+      Object.assign(existing, updates, { updatedAt: new Date() });
+      return existing;
+    }
+    async deleteZone(id: number): Promise<void> {
+      this.zones = this.zones.filter((zone) => zone.id !== id);
+    }
 
-    // POIs
-    async getPois() { return []; }
-    async createPoi(_poi: InsertPoi) { throw new Error('DB not enabled'); }
+    async getEarnings(_userId: string): Promise<Earning[]> { return []; }
+    async createEarning(_earning: InsertEarning): Promise<Earning> { throw new Error("Database required for earnings"); }
+    async getEarningsStats(_userId: string): Promise<{ totalEarnings: number, totalTrips: number, averagePerTrip: number }> {
+      return { totalEarnings: 0, totalTrips: 0, averagePerTrip: 0 };
+    }
 
-    // Recommendations
-    async getRecommendations() { return []; }
-    async createRecommendation(_recommendation: InsertRecommendation) { throw new Error('DB not enabled'); }
-    async clearRecommendations() { /* no-op */ }
+    async getPois(): Promise<Poi[]> { return this.pois; }
+    async createPoi(poi: InsertPoi): Promise<Poi> {
+      const created = { ...poi, id: this.pois.length + 1 } as Poi;
+      this.pois.push(created);
+      return created;
+    }
 
-    // Notification Preferences
-    async getNotificationPreferences(_userId: string) { return undefined; }
-    async upsertNotificationPreferences(userId: string, prefs: Partial<InsertNotificationPreference>) { return { userId, airportInfo: true, events: true, hotZones: true, relocate: true, bestEarnings: true, frequency: 'hourly' } as any; }
+    async getRecommendations(): Promise<Recommendation[]> { return this.recommendations; }
+    async createRecommendation(recommendation: InsertRecommendation): Promise<Recommendation> {
+      const created = {
+        ...recommendation,
+        id: this.recommendations.length + 1,
+        validFrom: recommendation.validFrom ?? new Date(),
+        validUntil: recommendation.validUntil ?? new Date(Date.now() + 60 * 60 * 1000),
+      } as Recommendation;
+      this.recommendations.push(created);
+      return created;
+    }
+    async clearRecommendations(): Promise<void> { this.recommendations = []; }
 
-    // Payments
-    async getPayments(_userId: string) { return []; }
-    async createPayment(_payment: InsertPayment) { throw new Error('DB not enabled'); }
-    async updatePaymentStatus(_id: number, _status: string) { throw new Error('DB not enabled'); }
-    async getPaymentBySessionId(_sessionId: string) { return undefined; }
-    async getPaymentByToken(_token: string) { return undefined; }
+    async getNotificationPreferences(_userId: string): Promise<NotificationPreference | undefined> { return undefined; }
+    async upsertNotificationPreferences(userId: string, prefs: Partial<InsertNotificationPreference>): Promise<NotificationPreference> {
+      return {
+        id: 1,
+        userId,
+        airportInfo: prefs.airportInfo ?? true,
+        events: prefs.events ?? true,
+        hotZones: prefs.hotZones ?? true,
+        relocate: prefs.relocate ?? true,
+        bestEarnings: prefs.bestEarnings ?? true,
+        frequency: prefs.frequency ?? "hourly",
+      } as NotificationPreference;
+    }
 
-    // Shift Sessions
-    async createShiftSession(_session: InsertShiftSession) { throw new Error('DB not enabled'); }
-    async getActiveShiftSession(_userId: string) { return undefined; }
-    async updateShiftSession(_id: number, _updates: Partial<InsertShiftSession>) { throw new Error('DB not enabled'); }
-    async endShiftSession(_id: number) { throw new Error('DB not enabled'); }
-    async getRecentShiftSessions(_userId: string, _limit: number) { return []; }
+    async getPayments(_userId: string): Promise<Payment[]> { return []; }
+    async createPayment(_payment: InsertPayment): Promise<Payment> { throw new Error("Database required for payments"); }
+    async updatePaymentStatus(_id: number, _status: string): Promise<Payment> { throw new Error("Database required for payments"); }
+    async getPaymentBySessionId(_sessionId: string): Promise<Payment | undefined> { return undefined; }
+    async getPaymentByToken(_token: string): Promise<Payment | undefined> { return undefined; }
 
-    // Copilot Recommendations
-    async createCopilotRecommendation(_rec: InsertCopilotRecommendation) { throw new Error('DB not enabled'); }
-    async getRecentCopilotRecommendations(_userId: string, _limit: number) { return []; }
+    async createShiftSession(_session: InsertShiftSession): Promise<ShiftSession> { throw new Error("Database required for shifts"); }
+    async getActiveShiftSession(_userId: string): Promise<ShiftSession | undefined> { return undefined; }
+    async updateShiftSession(_id: number, _updates: Partial<InsertShiftSession>): Promise<ShiftSession> { throw new Error("Database required for shifts"); }
+    async endShiftSession(_id: number): Promise<ShiftSession> { throw new Error("Database required for shifts"); }
+    async getRecentShiftSessions(_userId: string, _limit: number): Promise<ShiftSession[]> { return []; }
 
-    // Recommendation Outcomes
-    async createRecommendationOutcome(_outcome: InsertRecommendationOutcome) { throw new Error('DB not enabled'); }
-    async getRecommendationOutcomes(_userId: string, _limit: number) { return []; }
+    async createCopilotRecommendation(_rec: InsertCopilotRecommendation): Promise<CopilotRecommendationRecord> { throw new Error("Database required for copilot recommendations"); }
+    async getRecentCopilotRecommendations(_userId: string, _limit: number): Promise<CopilotRecommendationRecord[]> { return []; }
 
-    // Replay Events
-    async createReplayEvent(_event: InsertReplayEvent) { throw new Error('DB not enabled'); }
-    async getReplayEvents(_shiftSessionId: number) { return []; }
+    async createRecommendationOutcome(_outcome: InsertRecommendationOutcome): Promise<RecommendationOutcomeRecord> { throw new Error("Database required for recommendation outcomes"); }
+    async getRecommendationOutcomes(_userId: string, _limit: number): Promise<RecommendationOutcomeRecord[]> { return []; }
 
-    // Driver Insights
-    async createDriverInsight(_insight: InsertDriverInsight) { throw new Error('DB not enabled'); }
-    async getDriverInsights(_userId: string) { return []; }
-    async markInsightSeen(_id: number) { throw new Error('DB not enabled'); }
+    async createReplayEvent(_event: InsertReplayEvent): Promise<ReplayEventRecord> { throw new Error("Database required for replay events"); }
+    async getReplayEvents(_shiftSessionId: number): Promise<ReplayEventRecord[]> { return []; }
+
+    async createDriverInsight(_insight: InsertDriverInsight): Promise<DriverInsightRecord> { throw new Error("Database required for driver insights"); }
+    async getDriverInsights(_userId: string): Promise<DriverInsightRecord[]> { return []; }
+    async markInsightSeen(_id: number): Promise<DriverInsightRecord> { throw new Error("Database required for driver insights"); }
   }
 
-  storage = new NoopStorage();
+  storage = new DemoStorage();
 } else {
   storage = new DatabaseStorage();
 }
-
