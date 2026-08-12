@@ -59,13 +59,13 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
   const { data } = useQuery<RoadTrafficResponse>({
     queryKey: ['/api/road-traffic'],
     queryFn: async () => {
-      const res = await fetch('/api/road-traffic', { credentials: 'include' });
+      const res = await fetch('/api/road-traffic', { credentials: 'include', cache: 'no-store' });
       if (!res.ok) throw new Error('traffic unavailable');
       return res.json();
     },
-    refetchInterval: 60000,
+    refetchInterval: 15000,
     enabled,
-    staleTime: 55000,
+    staleTime: 10000,
   });
 
   // Prepare road geometry data whenever new traffic data arrives
@@ -81,11 +81,14 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
           cumLen.push(cumLen[i - 1] + latlngs[i - 1].distanceTo(latlngs[i]));
         }
         const totalLen = cumLen[cumLen.length - 1];
-        // dot density: 1 dot per ~250m at full intensity (400m on mobile), min 1
-        const dotSpacing = IS_MOBILE ? 400 : 250;
-        const dotCount = Math.max(1, Math.round((totalLen / dotSpacing) * r.intensity));
-        // heavier traffic = slower dots (congestion): 14 m/s free flow → 3 m/s jammed
-        const speed = 14 - 11 * r.intensity;
+        // dot density: enough moving beads to read as traffic even in public demo mode.
+        const dotSpacing = IS_MOBILE ? 260 : 170;
+        const dotCount = Math.min(
+          IS_MOBILE ? 18 : 30,
+          Math.max(2, Math.round((totalLen / dotSpacing) * (0.35 + r.intensity * 0.9))),
+        );
+        // Faster than real traffic so movement is visible on dashboard-scale maps.
+        const speed = 38 - 28 * r.intensity;
         const phases = Array.from({ length: dotCount }, (_, i) =>
           (i / dotCount + ((r.id * 0.618) % 1)) % 1,
         );
@@ -113,7 +116,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     canvas.style.top = '0';
     canvas.style.left = '0';
     canvas.style.pointerEvents = 'none';
-    canvas.style.zIndex = '450'; // above overlay pane (400), below markers (600)
+    canvas.style.zIndex = '575'; // above heat overlays, below markers/tooltips
     map.getContainer().appendChild(canvas);
     canvasRef.current = canvas;
 
@@ -175,10 +178,12 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
       const size = map.getSize();
 
       // batch dots per congestion color (one path per color)
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.95;
       const colors = ['#2EE6A6', '#FFB547', '#FF5470'];
       for (const color of colors) {
         ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 6;
         ctx.beginPath();
         for (const road of visibleRoads) {
           if (road.color !== color) continue;
@@ -193,12 +198,15 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
               pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
             ) continue;
 
-            ctx.moveTo(pt.x + 1.6, pt.y);
-            ctx.arc(pt.x, pt.y, 1.6, 0, Math.PI * 2);
+            const pulse = 0.45 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2);
+            const radius = 2.1 + road.intensity * 1.1 + pulse;
+            ctx.moveTo(pt.x + radius, pt.y);
+            ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
           }
         }
         ctx.fill();
       }
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     };
     rafRef.current = requestAnimationFrame(frame);
