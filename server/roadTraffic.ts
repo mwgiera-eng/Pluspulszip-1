@@ -26,6 +26,149 @@ way["highway"~"^(motorway|trunk|primary|secondary)$"](${BBOX});
 out geom;
 `;
 
+
+
+const USE_EXTERNAL_ROADS = process.env.ENABLE_EXTERNAL_SIGNALS === "true";
+
+const FALLBACK_ROADS: Omit<RoadSegment, "intensity">[] = [
+  {
+    id: -101,
+    name: "A4 / Airport corridor",
+    highway: "motorway",
+    geometry: [
+      [50.083, 19.79],
+      [50.079, 19.82],
+      [50.072, 19.86],
+      [50.065, 19.9],
+      [50.063, 19.945],
+    ],
+  },
+  {
+    id: -102,
+    name: "Opolska",
+    highway: "primary",
+    geometry: [
+      [50.085, 19.89],
+      [50.09, 19.93],
+      [50.092, 19.975],
+      [50.09, 20.03],
+    ],
+  },
+  {
+    id: -103,
+    name: "Aleje Trzech Wieszczow",
+    highway: "primary",
+    geometry: [
+      [50.075, 19.91],
+      [50.067, 19.923],
+      [50.058, 19.931],
+      [50.048, 19.936],
+    ],
+  },
+  {
+    id: -104,
+    name: "Lubicz / Mogilska",
+    highway: "primary",
+    geometry: [
+      [50.0656, 19.9472],
+      [50.067, 19.966],
+      [50.07, 19.995],
+      [50.072, 20.025],
+    ],
+  },
+  {
+    id: -105,
+    name: "Nowohucka",
+    highway: "primary",
+    geometry: [
+      [50.052, 19.97],
+      [50.055, 19.995],
+      [50.06, 20.025],
+      [50.064, 20.06],
+    ],
+  },
+  {
+    id: -106,
+    name: "Wielicka",
+    highway: "primary",
+    geometry: [
+      [50.046, 19.956],
+      [50.034, 19.97],
+      [50.017, 19.985],
+      [50.004, 20.005],
+    ],
+  },
+  {
+    id: -107,
+    name: "Zakopianska",
+    highway: "primary",
+    geometry: [
+      [50.044, 19.935],
+      [50.026, 19.927],
+      [50.006, 19.914],
+    ],
+  },
+  {
+    id: -108,
+    name: "Konopnickiej",
+    highway: "secondary",
+    geometry: [
+      [50.052, 19.925],
+      [50.046, 19.932],
+      [50.04, 19.94],
+      [50.034, 19.948],
+    ],
+  },
+  {
+    id: -109,
+    name: "Dietla",
+    highway: "secondary",
+    geometry: [
+      [50.051, 19.925],
+      [50.05, 19.944],
+      [50.051, 19.964],
+    ],
+  },
+  {
+    id: -110,
+    name: "Kotlarska / Grzegorzecka",
+    highway: "secondary",
+    geometry: [
+      [50.052, 19.945],
+      [50.05, 19.96],
+      [50.052, 19.98],
+    ],
+  },
+  {
+    id: -111,
+    name: "Powstania Warszawskiego",
+    highway: "secondary",
+    geometry: [
+      [50.068, 19.947],
+      [50.058, 19.958],
+      [50.05, 19.968],
+    ],
+  },
+  {
+    id: -112,
+    name: "Balicka / Bronowice",
+    highway: "secondary",
+    geometry: [
+      [50.081, 19.79],
+      [50.083, 19.84],
+      [50.081, 19.885],
+      [50.077, 19.91],
+    ],
+  },
+];
+
+function useFallbackRoads(reason: string): Omit<RoadSegment, "intensity">[] {
+  lastFetchError = reason;
+  cachedRoads = FALLBACK_ROADS;
+  console.warn(`[roadTraffic] Using bundled Krakow road geometry fallback: ${reason}`);
+  return cachedRoads;
+}
+
 let cachedRoads: Omit<RoadSegment, "intensity">[] | null = null;
 let fetchPromise: Promise<Omit<RoadSegment, "intensity">[]> | null = null;
 let lastFetchError: string | null = null;
@@ -58,18 +201,25 @@ async function fetchRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
 
 async function getRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
   if (cachedRoads) return cachedRoads;
+
+  if (!USE_EXTERNAL_ROADS) {
+    return useFallbackRoads("ENABLE_EXTERNAL_SIGNALS is not true");
+  }
+
   if (!fetchPromise) {
     fetchPromise = fetchRoads()
       .then((roads) => {
+        if (roads.length < 6) {
+          return useFallbackRoads(`Overpass returned only ${roads.length} usable roads`);
+        }
         cachedRoads = roads;
         lastFetchError = null;
         console.log(`[roadTraffic] Cached ${roads.length} road segments from OSM`);
         return roads;
       })
       .catch((err) => {
-        lastFetchError = String(err);
-        fetchPromise = null; // allow retry on next request
-        throw err;
+        fetchPromise = null; // allow retry after a service restart
+        return useFallbackRoads(String(err));
       });
   }
   return fetchPromise;
