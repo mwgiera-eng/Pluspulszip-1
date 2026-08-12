@@ -1,0 +1,43 @@
+{
+  "name": "pluspuls-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "web": "expo start --web",
+    "export:web": "expo export --platform web",
+    "deploy:web": "eas deploy --prod",
+    "build:apk": "npx eas-cli@latest build --platform android --profile production",
+    "build:preview": "npx eas-cli@latest build --platform android --profile preview",
+    "doctor": "npx expo-doctor@latest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
+    "expo": "~57.0.12",
+    "expo-constants": "~57.0.10",
+    "expo-font": "~57.0.1",
+    "expo-linear-gradient": "~57.0.1",
+    "expo-linking": "~57.0.5",
+    "expo-location": "~57.0.9",
+    "expo-router": "~57.0.12",
+    "expo-splash-screen": "~57.0.6",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-maps": "1.27.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-web": "~0.21.2"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.18",
+    "typescript": "~5.9.2"
+  },
+  "engines": {
+    "node": ">=20.19.0 <23"
+  }
+}

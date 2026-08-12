@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+.tmp/
+dist/
+.env
+.env.local
+*.jks
+*.keystore
+google-services.json
+credentials.json
