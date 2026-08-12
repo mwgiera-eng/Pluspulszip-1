@@ -7,6 +7,9 @@
  * a stable per-road variation.
  */
 
+import { fetchMultipleRouteGeometries } from "./osrmService";
+import { getPopularRoutes, LOCATIONS } from "./popularRoutes";
+
 interface RoadSegment {
   id: number;
   name: string;
@@ -29,8 +32,21 @@ out geom;
 
 
 const USE_EXTERNAL_ROADS = process.env.ENABLE_EXTERNAL_SIGNALS !== "false";
-type RoadTrafficSource = "osm" | "fallback";
+type RoadTrafficSource = "navigation" | "osm" | "fallback";
 const ROAD_LIMIT = 750;
+const NAVIGATION_ROUTE_LIMIT = 16;
+const MIN_NAVIGATION_ROADS = 5;
+
+interface NavigationRoadPair {
+  id: number;
+  name: string;
+  highway: string;
+  fromLat: number;
+  fromLng: number;
+  toLat: number;
+  toLng: number;
+}
+
 const ROAD_PRIORITY: Record<string, number> = {
   motorway: 5,
   trunk: 4,
@@ -327,6 +343,125 @@ function simplifyGeometry(geometry: [number, number][], highway: string): [numbe
   return simplified;
 }
 
+function collectNavigationRoadPairs(): NavigationRoadPair[] {
+  const pairs: NavigationRoadPair[] = [];
+  const seen = new Set<string>();
+  let nextId = -2_000;
+
+  const addPair = (
+    name: string,
+    highway: string,
+    fromLat: number,
+    fromLng: number,
+    toLat: number,
+    toLng: number,
+  ) => {
+    if (![fromLat, fromLng, toLat, toLng].every(Number.isFinite)) return;
+
+    // Treat both directions as one corridor; OSRM returns the real road-following polyline.
+    const endpoints = [
+      `${fromLat.toFixed(4)},${fromLng.toFixed(4)}`,
+      `${toLat.toFixed(4)},${toLng.toFixed(4)}`,
+    ].sort();
+    const key = endpoints.join("|");
+    if (seen.has(key)) return;
+
+    seen.add(key);
+    pairs.push({
+      id: nextId--,
+      name,
+      highway,
+      fromLat,
+      fromLng,
+      toLat,
+      toLng,
+    });
+  };
+
+  const highwayForDistance = (distanceKm: number) => {
+    if (distanceKm >= 10) return "primary";
+    if (distanceKm >= 4) return "secondary";
+    return "tertiary";
+  };
+
+  for (const route of getPopularRoutes().slice(0, 10)) {
+    addPair(
+      `${route.fromShort} -> ${route.toShort}`,
+      highwayForDistance(route.distanceKm),
+      route.fromLat,
+      route.fromLng,
+      route.toLat,
+      route.toLng,
+    );
+  }
+
+  const byKey = new Map(LOCATIONS.map((location) => [location.key, location]));
+
+  const addLocationPair = (fromKey: string, toKey: string, highway: string) => {
+    const from = byKey.get(fromKey);
+    const to = byKey.get(toKey);
+    if (!from || !to) return;
+    addPair(
+      `${from.shortName} -> ${to.shortName}`,
+      highway,
+      from.lat,
+      from.lng,
+      to.lat,
+      to.lng,
+    );
+  };
+
+  [
+    ["airport", "mainStation", "primary"],
+    ["airport", "mainSquare", "primary"],
+    ["baliceOrangeParking", "mainStation", "primary"],
+    ["airport", "galeriaKazimierz", "primary"],
+    ["mainStation", "tauronArena", "secondary"],
+    ["mainStation", "galeriaSerenada", "secondary"],
+    ["mainSquare", "galeriaBonarka", "secondary"],
+    ["mainSquare", "tauronArena", "secondary"],
+    ["mainSquare", "ikea", "secondary"],
+    ["mainSquare", "galeriaKazimierz", "tertiary"],
+    ["galeriaBonarka", "factoryKrakow", "primary"],
+    ["galeriaKazimierz", "galeriaSerenada", "secondary"],
+    ["halaForum", "mainStation", "secondary"],
+    ["teatrBagatela", "airport", "primary"],
+  ].forEach(([fromKey, toKey, highway]) => addLocationPair(fromKey, toKey, highway));
+
+  return pairs.slice(0, NAVIGATION_ROUTE_LIMIT);
+}
+
+async function fetchNavigationRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
+  const pairs = collectNavigationRoadPairs();
+  const geometries = await fetchMultipleRouteGeometries(
+    pairs.map(({ fromLat, fromLng, toLat, toLng }) => ({ fromLat, fromLng, toLat, toLng })),
+  );
+
+  return geometries.flatMap((geometry, index) => {
+    if (!geometry || geometry.coordinates.length < 2) return [];
+    const pair = pairs[index];
+    return [{
+      id: pair.id,
+      name: pair.name,
+      highway: pair.highway,
+      geometry: simplifyGeometry(geometry.coordinates, pair.highway),
+    }];
+  });
+}
+
+function cacheRoads(
+  roads: Omit<RoadSegment, "intensity">[],
+  source: Exclude<RoadTrafficSource, "fallback">,
+  note: string | null = null,
+): Omit<RoadSegment, "intensity">[] {
+  cachedRoads = roads;
+  roadSource = source;
+  cachedAt = new Date().toISOString();
+  lastFetchError = note;
+  console.log(`[roadTraffic] Cached ${roads.length} road segments from ${source}`);
+  return cachedRoads;
+}
+
 async function fetchRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
   const res = await fetch(OVERPASS_URL, {
     method: "POST",
@@ -371,22 +506,34 @@ async function getRoads(): Promise<Omit<RoadSegment, "intensity">[]> {
   }
 
   if (!fetchPromise) {
-    fetchPromise = fetchRoads()
-      .then((roads) => {
-        if (roads.length < 6) {
-          return useFallbackRoads(`Overpass returned only ${roads.length} usable roads`);
+    fetchPromise = (async () => {
+      let navigationNote: string | null = null;
+
+      try {
+        const navigationRoads = await fetchNavigationRoads();
+        if (navigationRoads.length >= MIN_NAVIGATION_ROADS) {
+          return cacheRoads(navigationRoads, "navigation");
         }
-        cachedRoads = roads;
-        roadSource = "osm";
-        cachedAt = new Date().toISOString();
-        lastFetchError = null;
-        console.log(`[roadTraffic] Cached ${roads.length} road segments from OSM`);
-        return roads;
-      })
-      .catch((err) => {
+        navigationNote = `OSRM navigation returned only ${navigationRoads.length} usable routes`;
+      } catch (err) {
+        navigationNote = `OSRM navigation failed: ${String(err)}`;
+      }
+
+      try {
+        const roads = await fetchRoads();
+        if (roads.length < 6) {
+          const note = [navigationNote, `Overpass returned only ${roads.length} usable roads`]
+            .filter(Boolean)
+            .join("; ");
+          return useFallbackRoads(note);
+        }
+        return cacheRoads(roads, "osm", navigationNote);
+      } catch (err) {
         fetchPromise = null; // allow retry after a service restart
-        return useFallbackRoads(String(err));
-      });
+        const note = [navigationNote, String(err)].filter(Boolean).join("; ");
+        return useFallbackRoads(note);
+      }
+    })();
   }
   return fetchPromise;
 }
