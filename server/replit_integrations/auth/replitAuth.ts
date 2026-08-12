@@ -5,6 +5,7 @@ import connectPg from "connect-pg-simple";
 import type { Express, RequestHandler } from "express";
 import { z } from "zod";
 import { config } from "../../config";
+import { pool } from "../../db";
 import { deliverAccountEmail } from "../../email";
 import { rateLimit } from "../../security";
 import { emailSchema, loginSchema, registerSchema, resetPasswordSchema, tokenSchema, type PublicUser } from "@shared/auth";
@@ -66,7 +67,10 @@ export function getSession() {
   const PgStore = connectPg(session);
   return session({
     secret: config.SESSION_SECRET,
-    store: new PgStore({ conString: config.DATABASE_URL, createTableIfMissing: false, ttl: 7 * 24 * 60 * 60, tableName: "sessions" }),
+    // Reuse the application's configured pg.Pool. This keeps session storage on
+    // exactly the same Render-compatible TLS configuration as Drizzle instead
+    // of creating a second pool by reparsing DATABASE_URL.
+    store: new PgStore({ pool, createTableIfMissing: false, ttl: 7 * 24 * 60 * 60, tableName: "sessions" }),
     name: "shiftoptima.sid",
     resave: false,
     saveUninitialized: false,
