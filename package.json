@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
-    "start": "NODE_ENV=production node dist/index.cjs",
+    "start": "node dist/migrate.cjs && NODE_ENV=production node dist/index.cjs",
+    "serve": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "test": "tsx --test server/auth.test.ts",
     "db:push": "drizzle-kit push"
