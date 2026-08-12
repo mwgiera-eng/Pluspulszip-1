@@ -664,7 +664,7 @@ export function MapView({ driverPosition }: MapViewProps) {
         </div>
       </div>
 
-      <div className="absolute top-2 right-2 z-[1000] flex flex-col gap-2 max-w-[280px]" data-testid="section-heat-controls">
+      <div className="absolute top-2 right-2 z-[1000] flex max-h-[calc(100%-1rem)] w-[min(280px,calc(100%-1rem))] max-w-[280px] flex-col gap-2 overflow-y-auto" data-testid="section-heat-controls">
         <div className="pluspuls-map-panel p-2.5" data-testid="section-layer-controls">
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-[11px] font-semibold text-foreground uppercase tracking-[0.16em]">Map Layers</span>
