@@ -16,7 +16,7 @@ import Earnings from "@/pages/Earnings";
 import MapPage from "@/pages/MapPage";
 import Settings from "@/pages/Settings";
 import Subscription from "@/pages/Subscription";
-import Login from "@/pages/Login";
+import Login, { Register } from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import Notifications from "@/pages/Notifications";
 import Admin from "@/pages/Admin";
@@ -100,6 +100,14 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
+function AdminRoute() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  if (!user) return <Login />;
+  if (user.role !== "admin") return <div className="flex h-screen items-center justify-center"><div className="text-center"><h1 className="text-2xl font-bold">Unauthorized</h1><p className="text-muted-foreground">Administrator access is required.</p></div></div>;
+  return <Admin />;
+}
+
 function PremiumGate() {
   const { subscriptionInfo } = useAuth();
   const [, setLocation] = useLocation();
@@ -140,7 +148,8 @@ function PremiumRoute({ component: Component }: { component: React.ComponentType
 function Router() {
   return (
     <Switch>
-      <Route path="/login" component={Login} />
+      <Route path="/login">{() => <Login />}</Route>
+      <Route path="/register">{() => <Register />}</Route>
 
       <Route path="/">
         <PublicRoute component={Dashboard} />
@@ -164,9 +173,7 @@ function Router() {
       <Route path="/subscription">
         <ProtectedRoute component={Subscription} />
       </Route>
-      <Route path="/admin">
-        <ProtectedRoute component={Admin} />
-      </Route>
+      <Route path="/admin" component={AdminRoute} />
 
       <Route component={NotFound} />
     </Switch>

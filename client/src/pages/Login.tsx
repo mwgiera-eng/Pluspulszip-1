@@ -7,8 +7,8 @@ import { Map, ShieldCheck, Zap, UserPlus, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient } from "@/lib/queryClient";
 
-export default function Login() {
-  const [mode, setMode] = useState<"login" | "register">("login");
+export default function Login({ initialMode = "login" }: { initialMode?: "login" | "register" }) {
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,7 +26,7 @@ export default function Login() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.message || "Unable to continue");
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       window.location.href = "/";
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to continue");
@@ -72,6 +72,10 @@ export default function Login() {
       </div>
     </div>
   );
+}
+
+export function Register() {
+  return <Login initialMode="register" />;
 }
 
 function Field({ name, label, hint, ...props }: { name: string; label: string; hint?: string } & React.InputHTMLAttributes<HTMLInputElement>) {

@@ -18,7 +18,7 @@ export type AuthUser = User & {
 };
 
 async function fetchUser(): Promise<AuthUser | null> {
-  const response = await fetch("/api/auth/user", {
+  const response = await fetch("/api/auth/me", {
     credentials: "include",
   });
 
@@ -40,7 +40,7 @@ async function logout(): Promise<void> {
 export function useAuth() {
   const queryClient = useQueryClient();
   const { data: user, isLoading } = useQuery<AuthUser | null>({
-    queryKey: ["/api/auth/user"],
+    queryKey: ["/api/auth/me"],
     queryFn: fetchUser,
     retry: false,
     staleTime: 1000 * 60 * 2,
@@ -49,7 +49,7 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.setQueryData(["/api/auth/me"], null);
       window.location.href = "/login";
     },
   });

@@ -1,23 +1,17 @@
 import type { Express } from "express";
 import { authStorage } from "./storage";
-import { isAuthenticated } from "./replitAuth";
+import { isAuthenticated, toPublicUser, type AuthenticatedUser } from "./replitAuth";
 import { getSubscriptionStatus } from "../../subscriptionService";
 
-function publicUser(user: Awaited<ReturnType<typeof authStorage.getUser>>) {
-  if (!user) return user;
-  const { passwordHash: _passwordHash, ...safeUser } = user;
-  return safeUser;
-}
-
 export function registerAuthRoutes(app: Express): void {
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  const currentUser = async (req: import("express").Request, res: import("express").Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req.user as AuthenticatedUser).id;
       const user = await authStorage.getUser(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
       const sub = getSubscriptionStatus(user);
       res.json({
-        ...publicUser(user),
+        ...toPublicUser(user),
         isPremium: sub.isPremium,
         subscriptionInfo: sub,
       });
@@ -25,5 +19,8 @@ export function registerAuthRoutes(app: Express): void {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
-  });
+  };
+  app.get("/api/auth/me", isAuthenticated, currentUser);
+  // Compatibility alias for older clients; identity still comes exclusively from the session.
+  app.get("/api/auth/user", isAuthenticated, currentUser);
 }
