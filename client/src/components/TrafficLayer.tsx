@@ -184,48 +184,54 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
       const size = map.getSize();
 
       // batch dots per congestion color (one path per color)
-      ctx.globalAlpha = 0.95;
+      ctx.globalCompositeOperation = 'source-over';
       const colors = ['#2EE6A6', '#FFB547', '#FF5470'];
+      const zoom = zoomRef.current;
+      const zoomScale = Math.min(1.45, Math.max(0.9, 1 + (zoom - 13) * 0.035));
+      const repeatCount = Math.min(3, Math.max(1, Math.round(1 + (zoom - 13) * 0.45)));
       for (const color of colors) {
         ctx.fillStyle = color;
         ctx.strokeStyle = color;
         ctx.shadowColor = color;
-        const zoomScale = Math.min(1.35, Math.max(0.62, 0.68 + (zoomRef.current - 11) * 0.12));
-        ctx.shadowBlur = IS_MOBILE ? 1.5 : 2.5;
-        ctx.lineWidth = (IS_MOBILE ? 0.45 : 0.6) * zoomScale;
+        ctx.shadowBlur = (IS_MOBILE ? 2 : 4) * zoomScale;
+        ctx.lineWidth = (IS_MOBILE ? 0.42 : 0.56) * zoomScale;
         ctx.lineCap = 'round';
 
         const tails: Array<{ from: L.Point; to: L.Point }> = [];
-        const dots: Array<{ x: number; y: number; radius: number }> = [];
+        const dots: Array<{ x: number; y: number; radius: number; halo: number }> = [];
         for (const road of visibleRoads) {
           if (road.color !== color) continue;
-          const tailLength = Math.min(18, Math.max(6, road.speed * 0.45));
+          const tailLength = Math.min(22, Math.max(7, road.speed * 0.5));
           for (let d = 0; d < road.dotCount; d++) {
-            const dist =
-              ((road.phases[d] * road.totalLen + elapsed * road.speed) %
-                road.totalLen + road.totalLen) % road.totalLen;
-            const ll = pointAt(road, dist);
-            const pt = map.latLngToContainerPoint(ll);
-            if (
-              pt.x < -boundsPad || pt.y < -boundsPad ||
-              pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
-            ) continue;
+            for (let repeat = 0; repeat < repeatCount; repeat++) {
+              const repeatOffset = (repeat * road.totalLen) / Math.max(1, road.dotCount * repeatCount);
+              const dist =
+                ((road.phases[d] * road.totalLen + repeatOffset + elapsed * road.speed) %
+                  road.totalLen + road.totalLen) % road.totalLen;
+              const ll = pointAt(road, dist);
+              const pt = map.latLngToContainerPoint(ll);
+              if (
+                pt.x < -boundsPad || pt.y < -boundsPad ||
+                pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
+              ) continue;
 
-            const tailDist = dist - tailLength;
-            const pulse = 0.1 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2);
-            if (tailDist > 0) {
-              const tail = map.latLngToContainerPoint(pointAt(road, tailDist));
-              tails.push({ from: tail, to: pt });
+              const tailDist = dist - tailLength;
+              const pulse = 0.5 + 0.5 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2 + repeat * 1.7);
+              if (tailDist > 0) {
+                const tail = map.latLngToContainerPoint(pointAt(road, tailDist));
+                tails.push({ from: tail, to: pt });
+              }
+              dots.push({
+                x: pt.x,
+                y: pt.y,
+                radius: Math.max(0.68, (0.78 + road.intensity * 0.36) * zoomScale),
+                halo: (2.8 + road.intensity * 1.8 + pulse * 1.2) * zoomScale,
+              });
             }
-            dots.push({
-              x: pt.x,
-              y: pt.y,
-              radius: Math.max(0.55, (0.72 + road.intensity * 0.42 + pulse) * zoomScale),
-            });
           }
         }
 
-        ctx.globalAlpha = 0.18;
+        ctx.globalAlpha = 0.14;
         ctx.beginPath();
         for (const tail of tails) {
           ctx.moveTo(tail.from.x, tail.from.y);
@@ -233,7 +239,15 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         }
         ctx.stroke();
 
-        ctx.globalAlpha = 0.82;
+        ctx.globalAlpha = 0.16;
+        ctx.beginPath();
+        for (const dot of dots) {
+          ctx.moveTo(dot.x + dot.halo, dot.y);
+          ctx.arc(dot.x, dot.y, dot.halo, 0, Math.PI * 2);
+        }
+        ctx.fill();
+
+        ctx.globalAlpha = 0.86;
         ctx.beginPath();
         for (const dot of dots) {
           ctx.moveTo(dot.x + dot.radius, dot.y);
@@ -243,6 +257,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
       }
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
     };
     rafRef.current = requestAnimationFrame(frame);
 
