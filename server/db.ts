@@ -5,10 +5,24 @@ import { config } from "./config";
 
 const { Pool } = pg;
 
-// Render's Blueprint DATABASE_URL resolves to the private/internal Postgres URL,
-// which does not require TLS. For external database URLs, node-postgres will
-// honor SSL options such as ?sslmode=require directly from the connection URL.
-// Do not force certificate verification here: doing so breaks Render's internal
-// database connection with DEPTH_ZERO_SELF_SIGNED_CERT.
-export const pool = new Pool({ connectionString: config.DATABASE_URL });
+function createDatabasePool() {
+  const databaseUrl = new URL(config.DATABASE_URL);
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(databaseUrl.hostname);
+
+  // node-postgres lets SSL query-string options override the explicit `ssl`
+  // object. Remove only those SSL transport options so Render uses the
+  // configuration below consistently, without changing any credentials or
+  // other connection parameters.
+  for (const parameter of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) {
+    databaseUrl.searchParams.delete(parameter);
+  }
+
+  return new Pool({
+    connectionString: databaseUrl.toString(),
+    max: 10,
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+  });
+}
+
+export const pool = createDatabasePool();
 export const db = drizzle(pool, { schema });
