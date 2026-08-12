@@ -82,9 +82,9 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         }
         const totalLen = cumLen[cumLen.length - 1];
         // dot density: enough moving beads to read as traffic even in public demo mode.
-        const dotSpacing = IS_MOBILE ? 260 : 170;
+        const dotSpacing = IS_MOBILE ? 340 : 240;
         const dotCount = Math.min(
-          IS_MOBILE ? 18 : 30,
+          IS_MOBILE ? 12 : 22,
           Math.max(2, Math.round((totalLen / dotSpacing) * (0.35 + r.intensity * 0.9))),
         );
         // Faster than real traffic so movement is visible on dashboard-scale maps.
@@ -184,15 +184,15 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         ctx.fillStyle = color;
         ctx.strokeStyle = color;
         ctx.shadowColor = color;
-        ctx.shadowBlur = 6;
-        ctx.lineWidth = IS_MOBILE ? 1.1 : 1.5;
+        ctx.shadowBlur = 3;
+        ctx.lineWidth = IS_MOBILE ? 0.8 : 1.1;
         ctx.lineCap = 'round';
 
         const tails: Array<{ from: L.Point; to: L.Point }> = [];
         const dots: Array<{ x: number; y: number; radius: number }> = [];
         for (const road of visibleRoads) {
           if (road.color !== color) continue;
-          const tailLength = Math.min(75, Math.max(20, road.speed * 1.6));
+          const tailLength = Math.min(34, Math.max(8, road.speed * 0.8));
           for (let d = 0; d < road.dotCount; d++) {
             const dist =
               ((road.phases[d] * road.totalLen + elapsed * road.speed) %
@@ -204,19 +204,21 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
               pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
             ) continue;
 
-            const tailDist = (dist - tailLength + road.totalLen) % road.totalLen;
-            const tail = map.latLngToContainerPoint(pointAt(road, tailDist));
-            const pulse = 0.45 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2);
-            tails.push({ from: tail, to: pt });
+            const tailDist = dist - tailLength;
+            const pulse = 0.28 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2);
+            if (tailDist > 0) {
+              const tail = map.latLngToContainerPoint(pointAt(road, tailDist));
+              tails.push({ from: tail, to: pt });
+            }
             dots.push({
               x: pt.x,
               y: pt.y,
-              radius: 2.1 + road.intensity * 1.1 + pulse,
+              radius: 1.6 + road.intensity * 0.75 + pulse,
             });
           }
         }
 
-        ctx.globalAlpha = 0.45;
+        ctx.globalAlpha = 0.25;
         ctx.beginPath();
         for (const tail of tails) {
           ctx.moveTo(tail.from.x, tail.from.y);
