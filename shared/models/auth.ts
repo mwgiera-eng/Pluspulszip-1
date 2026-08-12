@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import { boolean, index, integer, jsonb, pgTable, serial, timestamp, varchar } from "drizzle-orm/pg-core";
 
-// Session storage table — used by connect-pg-simple for express-session.
+// Session storage table.
+// Generic session storage used by server-side session middleware; safe to keep for
+// any production deployment (GCP Cloud SQL, managed Postgres, etc.).
 export const sessions = pgTable(
   "sessions",
   {

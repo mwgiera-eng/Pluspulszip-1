@@ -152,6 +152,8 @@ export const api = {
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
+export type InsertPoi = z.infer<typeof insertPoiSchema>;
+
 export function buildUrl(path: string, params?: Record<string, string | number>): string {
   let url = path;
   if (params) {

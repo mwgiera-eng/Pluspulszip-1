@@ -85,7 +85,7 @@ Preferred communication style: Simple, everyday language.
 - `shared/copilot.ts` — Copilot types (DataSourceId, CopilotMode, etc.)
 
 ## Admin Access
-Admin email: `obeydefiance@icloud.com` — set in `server/replit_integrations/auth/replitAuth.ts`
+Admin email: [redacted] — replit-specific admin settings removed for GCP deployment
 
 ## Deployment
 Live at: `https://optima-codeinside.replit.app`

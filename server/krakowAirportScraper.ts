@@ -138,7 +138,7 @@ function getAirlineName(code: string): string {
 function parseFlightsFromHtml(html: string, type: 'arrival' | 'departure'): ScrapedFlight[] {
   const flights: ScrapedFlight[] = [];
 
-  const rowRegex = /<tr>\s*<th scope="row">\s*(\d{1,2}:\d{2})\s*<\/th>\s*<td>\s*([\s\S]*?)\s*<\/td>\s*<td>([A-Z0-9]+ \d+)<\/td>\s*<td>\s*<span class="flight_status">\s*([\s\S]*?)\s*<\/span>/gs;
+  const rowRegex = /<tr>\s*<th scope="row">\s*(\d{1,2}:\d{2})\s*<\/th>\s*<td>\s*([\s\S]*?)\s*<\/td>\s*<td>([A-Z0-9]+ \d+)<\/td>\s*<td>\s*<span class="flight_status">\s*([\s\S]*?)\s*<\/span>/g;
 
   let match;
   while ((match = rowRegex.exec(html)) !== null) {
@@ -169,7 +169,14 @@ function parseFlightsFromHtml(html: string, type: 'arrival' | 'departure'): Scra
   return flights;
 }
 
+const ENABLE_EXTERNAL_SIGNALS = process.env.ENABLE_EXTERNAL_SIGNALS === "true";
+
 async function fetchFlightsFromKrakowAirport(type: 'arrival' | 'departure'): Promise<ScrapedFlight[] | null> {
+  if (!ENABLE_EXTERNAL_SIGNALS) {
+    console.log("[AirportScraper] External signals disabled (ENABLE_EXTERNAL_SIGNALS != 'true'). Skipping fetch.");
+    return null;
+  }
+
   const slug = type === 'departure' ? 'departures' : 'arrivals';
   const url = `https://www.krakowairport.pl/en/passenger/flights/destinations/${slug}/`;
 

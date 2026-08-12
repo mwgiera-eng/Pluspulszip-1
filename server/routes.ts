@@ -5,9 +5,8 @@ import { api } from "@shared/routes";
 import { insertZoneSchema, insertEarningSchema, insertPoiSchema } from "@shared/schema";
 import type { InsertEarning } from "@shared/schema";
 import { z } from "zod";
-import { setupAuth, isAuthenticated } from "./replit_integrations/auth";
-import { registerAuthRoutes } from "./replit_integrations/auth";
-import { authStorage, sanitizeUser } from "./replit_integrations/auth/storage";
+import { setupAuth, isAuthenticated, registerAuthRoutes, authStorage } from "./auth";
+import { sanitizeUser } from "./authStorage";
 import { generateRecommendations, getArrivalsWindowEstimate, generateLocationAwareAdvice, getZoneProfitHeat } from "./recommendationEngine";
 import { getSubscriptionStatus, activateSubscription } from "./subscriptionService";
 import { registerTransaction, processBlikPayment, verifyWebhookSignature, verifyTransaction, isSandboxMode, type PaymentMethod } from "./przelewy24Service";
@@ -186,7 +185,7 @@ export async function registerRoutes(
         const lng = parseFloat(u.lastSeenLng);
         let minDist = Infinity;
         for (const zone of allZones) {
-          const d = haversine(lat, lng, zone.lat, zone.lng);
+                  const d = haversine(lat, lng, Number(zone.lat), Number(zone.lng));
           if (d < minDist) { minDist = d; nearestZone = zone.name; }
         }
         if (minDist > 5) nearestZone = "Outside Kraków";
@@ -931,8 +930,12 @@ export async function registerRoutes(
 
   startEventsRefreshLoop();
 
-  // Seed Data
-  await seedDatabase();
+  // Seed Data (skip when no DATABASE_URL)
+  if (process.env.DATABASE_URL) {
+    await seedDatabase();
+  } else {
+    console.warn('Skipping DB seed: DATABASE_URL not set');
+  }
 
   return httpServer;
 }

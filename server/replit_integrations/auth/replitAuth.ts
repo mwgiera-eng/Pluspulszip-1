@@ -134,3 +134,5 @@ export const isAuthenticated: RequestHandler = (req, res, next) => {
   if (req.isAuthenticated()) return next();
   res.status(401).json({ message: "Unauthorized" });
 };
+
+export const authNotAvailableMessage = "Replit OIDC integration removed. Use GCP identity or server/auth.";
