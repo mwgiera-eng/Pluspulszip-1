@@ -3,15 +3,14 @@
 ## Production deployment (Render)
 
 This repository now includes a Render Blueprint (`render.yaml`) for the web
-service and PostgreSQL database. Deploy the Blueprint, set `ADMIN_EMAIL`, and
-Render will generate the session secret, apply the Drizzle schema before each
-release, build the client/server bundle, and monitor `/api/health`.
+service and PostgreSQL database. Deploy the Blueprint, run the checked-in SQL
+migration, and configure the environment described in `SECURITY.md`.
 
 Authentication is first-party email/password authentication and does not depend
 on Replit. Passwords are salted and hashed, sessions are persisted in PostgreSQL,
 and production cookies are secure. Copy `.env.example` for local configuration,
-run `npm run db:push`, then use `npm run dev`. The account matching
-`ADMIN_EMAIL` is approved as the initial administrator when it registers.
+run the migration, then use `npm run dev`. Administrator promotion is an
+explicit database operation; registration never grants administrative access.
 
 ## Overview
 
@@ -98,7 +97,7 @@ Preferred communication style: Simple, everyday language.
 - `shared/copilot.ts` — Copilot types (DataSourceId, CopilotMode, etc.)
 
 ## Admin Access
-Admin email: set `ADMIN_EMAIL` in the deployment environment before registering the initial administrator.
+Administrators must be promoted explicitly through a controlled database operation.
 
 ## Deployment
 Use the included `render.yaml` Blueprint to deploy the application and its PostgreSQL database on Render.

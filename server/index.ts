@@ -3,9 +3,11 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { pool } from "./db";
+import { installSecurityHeaders, requireTrustedOrigin } from "./security";
 
 const app = express();
 const httpServer = createServer(app);
+installSecurityHeaders(app);
 
 declare module "http" {
   interface IncomingMessage {
@@ -22,6 +24,7 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+app.use("/api", requireTrustedOrigin);
 
 app.get("/api/health", async (_req, res) => {
   try {
@@ -46,23 +49,10 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      log(logLine);
+      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
 
@@ -72,17 +62,15 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
+  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    const status = typeof err === "object" && err && "status" in err && typeof err.status === "number" ? err.status : 500;
+    console.error("Request failed", { status, name: err instanceof Error ? err.name : "UnknownError" });
 
     if (res.headersSent) {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    return res.status(status).json({ message: status < 500 ? "Request failed" : "Internal Server Error" });
   });
 
   // importantly only setup vite in development and after

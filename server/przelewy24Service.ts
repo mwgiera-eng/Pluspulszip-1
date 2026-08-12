@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { config as serverConfig } from "./config";
 
 const P24_SANDBOX_URL = "https://sandbox.przelewy24.pl";
 const P24_PRODUCTION_URL = "https://secure.przelewy24.pl";
@@ -63,13 +64,7 @@ function getAuthHeader(config: P24Config): string {
 }
 
 function getAppUrl(): string {
-  if (process.env.REPLIT_DEPLOYMENT_URL) {
-    return `https://${process.env.REPLIT_DEPLOYMENT_URL}`;
-  }
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
-  }
-  return "https://localhost:5000";
+  return serverConfig.APP_URL ?? "http://localhost:5000";
 }
 
 export type PaymentMethod = "blik" | "card" | "transfer" | "all";
