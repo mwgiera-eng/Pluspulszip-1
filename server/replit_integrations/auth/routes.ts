@@ -3,6 +3,12 @@ import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import { getSubscriptionStatus } from "../../subscriptionService";
 
+function publicUser(user: Awaited<ReturnType<typeof authStorage.getUser>>) {
+  if (!user) return user;
+  const { passwordHash: _passwordHash, ...safeUser } = user;
+  return safeUser;
+}
+
 export function registerAuthRoutes(app: Express): void {
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
@@ -11,7 +17,7 @@ export function registerAuthRoutes(app: Express): void {
       if (!user) return res.status(404).json({ message: "User not found" });
       const sub = getSubscriptionStatus(user);
       res.json({
-        ...user,
+        ...publicUser(user),
         isPremium: sub.isPremium,
         subscriptionInfo: sub,
       });

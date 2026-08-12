@@ -19,6 +19,11 @@ import { clearAirportCache, getAirportCacheMeta, getKrakowAirportFlights } from 
 import multer from "multer";
 import { parse } from "csv-parse/sync";
 
+const publicUser = <T extends { passwordHash?: string | null }>(user: T) => {
+  const { passwordHash: _passwordHash, ...safeUser } = user;
+  return safeUser;
+};
+
 const requirePremium: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
   if (!req.isAuthenticated() || !user?.claims?.sub) {
@@ -67,7 +72,7 @@ export async function registerRoutes(
       }
       const userId = req.user.claims.sub;
       const user = await authStorage.updateAccountType(userId, accountType, accountType === "provider" ? companyName?.trim() : undefined);
-      res.json(user);
+      res.json(publicUser(user));
     } catch (error) {
       res.status(500).json({ message: "Failed to update account type" });
     }
@@ -82,7 +87,7 @@ export async function registerRoutes(
       }
       const userId = req.user.claims.sub;
       const user = await authStorage.updateUserPhone(userId, phoneNumber.trim());
-      res.json(user);
+      res.json(publicUser(user));
     } catch (error) {
       res.status(500).json({ message: "Failed to update phone number" });
     }
@@ -123,12 +128,12 @@ export async function registerRoutes(
   // === Admin Routes ===
   app.get("/api/admin/users", isAuthenticated, isAdmin, async (_req, res) => {
     const users = await authStorage.getAllUsers();
-    res.json(users);
+    res.json(users.map(publicUser));
   });
 
   app.get("/api/admin/users/pending", isAuthenticated, isAdmin, async (_req, res) => {
     const pending = await authStorage.getPendingUsers();
-    res.json(pending);
+    res.json(pending.map(publicUser));
   });
 
   app.post("/api/admin/users/:id/approve", isAuthenticated, isAdmin, async (req, res) => {
@@ -189,7 +194,7 @@ export async function registerRoutes(
         }
         if (minDist > 5) nearestZone = "Outside Kraków";
       }
-      return { ...u, nearestZone };
+      return { ...publicUser(u), nearestZone };
     }).sort((a, b) => new Date(b.lastSeenAt!).getTime() - new Date(a.lastSeenAt!).getTime());
 
     res.json(result);
