@@ -182,11 +182,17 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
       const colors = ['#2EE6A6', '#FFB547', '#FF5470'];
       for (const color of colors) {
         ctx.fillStyle = color;
+        ctx.strokeStyle = color;
         ctx.shadowColor = color;
         ctx.shadowBlur = 6;
-        ctx.beginPath();
+        ctx.lineWidth = IS_MOBILE ? 1.1 : 1.5;
+        ctx.lineCap = 'round';
+
+        const tails: Array<{ from: L.Point; to: L.Point }> = [];
+        const dots: Array<{ x: number; y: number; radius: number }> = [];
         for (const road of visibleRoads) {
           if (road.color !== color) continue;
+          const tailLength = Math.min(75, Math.max(20, road.speed * 1.6));
           for (let d = 0; d < road.dotCount; d++) {
             const dist =
               ((road.phases[d] * road.totalLen + elapsed * road.speed) %
@@ -198,11 +204,31 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
               pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
             ) continue;
 
+            const tailDist = (dist - tailLength + road.totalLen) % road.totalLen;
+            const tail = map.latLngToContainerPoint(pointAt(road, tailDist));
             const pulse = 0.45 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2);
-            const radius = 2.1 + road.intensity * 1.1 + pulse;
-            ctx.moveTo(pt.x + radius, pt.y);
-            ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+            tails.push({ from: tail, to: pt });
+            dots.push({
+              x: pt.x,
+              y: pt.y,
+              radius: 2.1 + road.intensity * 1.1 + pulse,
+            });
           }
+        }
+
+        ctx.globalAlpha = 0.45;
+        ctx.beginPath();
+        for (const tail of tails) {
+          ctx.moveTo(tail.from.x, tail.from.y);
+          ctx.lineTo(tail.to.x, tail.to.y);
+        }
+        ctx.stroke();
+
+        ctx.globalAlpha = 0.95;
+        ctx.beginPath();
+        for (const dot of dots) {
+          ctx.moveTo(dot.x + dot.radius, dot.y);
+          ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
         }
         ctx.fill();
       }
