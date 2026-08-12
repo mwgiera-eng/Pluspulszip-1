@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Circle, Marker, Popup, useMap, CircleMarker, P
 import { useMapData } from '@/hooks/use-map-data';
 import { useQuery } from '@tanstack/react-query';
 import L from 'leaflet';
-import { Loader2, MapPin, Star, Clock, Flame } from 'lucide-react';
+import { Loader2, MapPin, Star, Clock, Flame, Radar, Navigation2 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import type { GeoPosition } from '@/hooks/use-geolocation';
 import { TrafficLayer } from './TrafficLayer';
@@ -22,8 +22,8 @@ L.Icon.Default.mergeOptions({
 const KRAKOW_COORDS: [number, number] = [50.0647, 19.9450];
 
 const PURPLE_COLOR = '#2EE6A6'; // Best $ route — teal (money)
-const GREEN_COLOR = '#8B8FA8'; // alternative routes — neutral
-const BLUE_COLOR = '#565A73'; // drive-to-pickup — tertiary
+const GREEN_COLOR = '#91F7D7'; // alternative money routes — soft teal
+const BLUE_COLOR = '#7DD3FC'; // drive-to-pickup — navigation blue
 
 interface RouteGeometryData {
   id: string;
@@ -54,9 +54,9 @@ function DriverMarker({ position }: { position: GeoPosition }) {
         center={[position.lat, position.lng]}
         radius={position.accuracy}
         pathOptions={{
-          color: '#3b82f6',
-          fillColor: '#3b82f6',
-          fillOpacity: 0.08,
+          color: '#2EE6A6',
+          fillColor: '#2EE6A6',
+          fillOpacity: 0.06,
           weight: 1,
           dashArray: '4 4',
         }}
@@ -66,9 +66,9 @@ function DriverMarker({ position }: { position: GeoPosition }) {
         radius={14}
         className="leaflet-driver-pulse"
         pathOptions={{
-          color: '#3b82f6',
-          fillColor: '#3b82f6',
-          fillOpacity: 0.15,
+          color: '#2EE6A6',
+          fillColor: '#2EE6A6',
+          fillOpacity: 0.16,
           weight: 0,
         }}
       />
@@ -76,8 +76,8 @@ function DriverMarker({ position }: { position: GeoPosition }) {
         center={[position.lat, position.lng]}
         radius={7}
         pathOptions={{
-          color: '#ffffff',
-          fillColor: '#3b82f6',
+          color: '#07110e',
+          fillColor: '#2EE6A6',
           fillOpacity: 1,
           weight: 3,
         }}
@@ -103,7 +103,7 @@ function DriveToPickupOverlay({ route }: { route: RouteGeometryData }) {
         positions={positions}
         pathOptions={{
           color: BLUE_COLOR,
-          weight: 5,
+          weight: 7,
           opacity: 0.12,
         }}
       />
@@ -113,8 +113,8 @@ function DriveToPickupOverlay({ route }: { route: RouteGeometryData }) {
         pathOptions={{
           color: BLUE_COLOR,
           weight: 3,
-          opacity: 0.7,
-          dashArray: '6 10',
+          opacity: 0.82,
+          dashArray: '5 12',
           lineCap: 'round',
         }}
       />
@@ -164,8 +164,8 @@ function RoadRouteOverlay({ routes }: { routes: RouteGeometryData[] }) {
               positions={positions}
               pathOptions={{
                 color: color,
-                weight: isPurple ? 5 : 4,
-                opacity: 0.15,
+                weight: isPurple ? 8 : 5,
+                opacity: isPurple ? 0.16 : 0.1,
               }}
             />
             <Polyline
@@ -173,16 +173,16 @@ function RoadRouteOverlay({ routes }: { routes: RouteGeometryData[] }) {
               className="leaflet-route-glow"
               pathOptions={{
                 color: color,
-                weight: isPurple ? 4 : 3,
-                opacity: isPurple ? 0.8 : 0.6,
-                dashArray: isPurple ? '12 8' : '8 12',
+                weight: isPurple ? 4 : 2.5,
+                opacity: isPurple ? 0.86 : 0.48,
+                dashArray: isPurple ? '10 12' : '4 14',
                 lineCap: 'round',
               }}
             />
 
             <CircleMarker
               center={startPos}
-              radius={isPurple ? 10 : 8}
+              radius={isPurple ? 12 : 7}
               className="leaflet-route-pulse"
               pathOptions={{
                 color: color,
@@ -196,10 +196,10 @@ function RoadRouteOverlay({ routes }: { routes: RouteGeometryData[] }) {
               center={startPos}
               radius={isPurple ? 6 : 5}
               pathOptions={{
-                color: '#ffffff',
+                color: '#06110e',
                 fillColor: color,
                 fillOpacity: 1,
-                weight: 2,
+                weight: 2.5,
               }}
             >
               <Popup>
@@ -220,7 +220,7 @@ function RoadRouteOverlay({ routes }: { routes: RouteGeometryData[] }) {
 
             <CircleMarker
               center={endPos}
-              radius={isPurple ? 6 : 4}
+              radius={isPurple ? 7 : 4}
               pathOptions={{
                 color: color,
                 fillColor: color,
@@ -406,11 +406,11 @@ interface HexHeatResponse {
 
 // Granular grid: dense green gradient (concept style), red core for surge
 function getHexGridColor(score: number): { color: string; opacity: number } {
-  if (score >= 90) return { color: '#FF5470', opacity: 0.5 };  // surge core
-  if (score >= 75) return { color: '#22C55E', opacity: 0.48 };
-  if (score >= 55) return { color: '#34D399', opacity: 0.4 };
-  if (score >= 35) return { color: '#6EE7B7', opacity: 0.3 };
-  return { color: '#A7F3D0', opacity: 0.2 };
+  if (score >= 90) return { color: '#FF5470', opacity: 0.62 };  // true surge core
+  if (score >= 75) return { color: '#2EE6A6', opacity: 0.56 };
+  if (score >= 55) return { color: '#20DFA0', opacity: 0.46 };
+  if (score >= 35) return { color: '#36F0B7', opacity: 0.32 };
+  return { color: '#8B8FA8', opacity: 0.16 };
 }
 
 const HEX_GRID_MIN_ZOOM = 12;
@@ -483,10 +483,11 @@ function HexGridLayer({
             color: b.color,
             fillColor: b.color,
             fillOpacity: b.opacity,
-            weight: 1,
-            opacity: Math.min(1, b.opacity + 0.15),
+            weight: 1.2,
+            opacity: Math.min(1, b.opacity + 0.22),
             interactive: false,
-          }}
+            className: "pluspuls-hex-grid",
+          } as any}
         />
       ))}
     </>
@@ -578,7 +579,7 @@ export function MapView({ driverPosition }: MapViewProps) {
   const hasDriveToPickup = routeGeometries.some(r => r.role === "drive_to_pickup");
 
   return (
-    <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl border border-border relative z-0">
+    <div className="pluspuls-map-shell w-full h-full rounded-xl overflow-hidden relative z-0">
       <MapContainer 
         center={KRAKOW_COORDS} 
         zoom={13} 
@@ -588,10 +589,12 @@ export function MapView({ driverPosition }: MapViewProps) {
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
 
         <MapController center={KRAKOW_COORDS} />
+
+        <div className="pluspuls-map-vignette" />
 
         <HexGridLayer
           hoursAhead={selectedOffset.hours}
@@ -627,11 +630,19 @@ export function MapView({ driverPosition }: MapViewProps) {
         {driverPosition && <DriverMarker position={driverPosition} />}
       </MapContainer>
 
-      <div className="absolute top-2 right-2 z-[1000] flex flex-col gap-2 max-w-[260px]" data-testid="section-heat-controls">
-        <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg p-2">
+      <div className="pluspuls-map-title absolute left-3 top-3 z-[900] hidden sm:flex items-center gap-2">
+        <Navigation2 className="w-4 h-4 text-primary" />
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-primary font-bold">PlusPuls Live</p>
+          <p className="text-xs text-foreground/80">Krakow demand, routes and traffic</p>
+        </div>
+      </div>
+
+      <div className="absolute top-2 right-2 z-[1000] flex flex-col gap-2 max-w-[280px]" data-testid="section-heat-controls">
+        <div className="pluspuls-map-panel p-2.5">
           <div className="flex items-center gap-1.5 mb-2">
-            <Flame className="w-3.5 h-3.5 text-[#FFB547]" />
-            <span className="text-[11px] font-semibold text-foreground">Profit Heat</span>
+            <Radar className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[11px] font-semibold text-foreground uppercase tracking-[0.16em]">Insight Radar</span>
             {heatData && (
               <span className="text-[10px] text-muted-foreground ml-auto">
                 {heatData.targetTime} CET
@@ -643,10 +654,10 @@ export function MapView({ driverPosition }: MapViewProps) {
               <button
                 key={offset.label}
                 onClick={() => setSelectedTimeIdx(idx)}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${
                   selectedTimeIdx === idx
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                    ? 'bg-primary text-primary-foreground shadow-[0_0_16px_hsl(159_79%_54%_/_0.34)]'
+                    : 'bg-[#101724]/80 text-muted-foreground hover:text-foreground hover:bg-primary/10'
                 }`}
                 data-testid={`btn-time-${offset.label.replace('+', 'plus-')}`}
               >
@@ -661,7 +672,7 @@ export function MapView({ driverPosition }: MapViewProps) {
           )}
           <button
             onClick={() => setShowTraffic(v => !v)}
-            className={`mt-1.5 w-full px-2 py-1 rounded text-[10px] font-medium transition-all ${
+            className={`mt-2 w-full px-2 py-1.5 rounded-md text-[10px] font-bold transition-all ${
               showTraffic
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted/50 text-muted-foreground hover:bg-muted'
@@ -672,8 +683,8 @@ export function MapView({ driverPosition }: MapViewProps) {
           </button>
         </div>
 
-        <div className="bg-card/90 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg p-1.5">
-          <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[9px]">
+        <div className="pluspuls-map-panel p-2">
+          <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[9px] text-foreground/90">
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-sm" style={{ background: '#FF5470' }} />
               <span>Surge 85+</span>
