@@ -7,11 +7,17 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false"
+      }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -20,6 +26,9 @@
       "distribution": "internal",
       "channel": "production",
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false"
+      },
       "android": {
         "buildType": "apk"
       }
