@@ -185,7 +185,11 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -4 }, { translateY: -4 }],
   },
   gridOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     borderWidth: 1,
     borderColor: "rgba(46,230,166,0.12)",
   },
