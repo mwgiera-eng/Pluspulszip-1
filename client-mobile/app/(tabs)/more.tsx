@@ -5,12 +5,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "@/lib/theme";
 
 const ITEMS = [
-  { icon: "pulse-outline" as const, title: "Sygnały", detail: "Lotnisko, wydarzenia, hot zones", route: "/signals" as const },
-  { icon: "notifications-outline" as const, title: "Powiadomienia", detail: "Typy alertów i częstotliwość", route: "/notifications" as const },
-  { icon: "settings-outline" as const, title: "Ustawienia", detail: "Prywatność, dane i zachowanie aplikacji", route: "/settings" as const },
-  { icon: "diamond-outline" as const, title: "Premium", detail: "Status planu i funkcje premium", route: "/subscription" as const },
-  { icon: "download-outline" as const, title: "Instalacja APK", detail: "Wersja, podpis i aktualizacje", route: "/download" as const },
-];
+  { icon: "pulse-outline" as const, title: "Sygnały", detail: "Lotnisko, wydarzenia, hot zones", route: "/signals" },
+  { icon: "notifications-outline" as const, title: "Powiadomienia", detail: "Typy alertów i częstotliwość", route: "/notifications" },
+  { icon: "settings-outline" as const, title: "Ustawienia", detail: "Prywatność, dane i zachowanie aplikacji", route: "/settings" },
+  { icon: "diamond-outline" as const, title: "Premium", detail: "Status planu i funkcje premium", route: "/subscription" },
+  { icon: "download-outline" as const, title: "Instalacja APK", detail: "Wersja, podpis i aktualizacje", route: "/download" },
+] as const;
 
 export default function MoreScreen() {
   return (
@@ -30,7 +30,7 @@ export default function MoreScreen() {
 
         <View style={styles.menu}>
           {ITEMS.map((item) => (
-            <Pressable key={item.title} onPress={() => router.push(item.route)} style={styles.item}>
+            <Pressable key={item.title} onPress={() => router.push(item.route as never)} style={styles.item}>
               <View style={styles.icon}><Ionicons name={item.icon} size={21} color={theme.primary} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>{item.title}</Text>
