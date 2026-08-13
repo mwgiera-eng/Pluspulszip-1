@@ -16,6 +16,10 @@ const IS_MOBILE =
   (window.matchMedia?.('(pointer: coarse)').matches ||
     (navigator.hardwareConcurrency ?? 8) <= 4);
 
+const KRAKOW_PULSE_ORIGIN: [number, number] = [50.0647, 19.945];
+const PERSPECTIVE_Y = 0.56;
+const RADIAL_WAVE_COUNT = 3;
+
 interface RoadTrafficResponse {
   roads: RoadSegment[];
   generatedAt: string;
@@ -25,8 +29,8 @@ interface RoadTrafficResponse {
 
 interface TrafficVisual {
   color: string;
-  glow: number;
   dotAlpha: number;
+  radiusScale: number;
 }
 
 const TRAFFIC_COLORS = {
@@ -35,31 +39,14 @@ const TRAFFIC_COLORS = {
   jam: '#FF5470',
 } as const;
 
-// Absolute intensity buckets keep the signal meaning stable for drivers:
-// green = moving, amber = slow/heavy, red = jammed. The backend intensity
-// already follows Krakow time-of-day, weekday and road-type curves.
 function getTrafficVisual(intensity: number): TrafficVisual {
-  if (intensity >= 0.72) {
-    return {
-      color: TRAFFIC_COLORS.jam,
-      glow: 5.2,
-      dotAlpha: 0.95,
-    };
+  if (intensity >= 0.7) {
+    return { color: TRAFFIC_COLORS.jam, dotAlpha: 0.98, radiusScale: 1.18 };
   }
-
-  if (intensity >= 0.48) {
-    return {
-      color: TRAFFIC_COLORS.slow,
-      glow: 3.8,
-      dotAlpha: 0.86,
-    };
+  if (intensity >= 0.42) {
+    return { color: TRAFFIC_COLORS.slow, dotAlpha: 0.94, radiusScale: 1.08 };
   }
-
-  return {
-    color: TRAFFIC_COLORS.flow,
-    glow: 2.2,
-    dotAlpha: 0.74,
-  };
+  return { color: TRAFFIC_COLORS.flow, dotAlpha: 0.9, radiusScale: 1 };
 }
 
 const HIGHWAY_PRIORITY: Record<string, number> = {
@@ -83,6 +70,14 @@ interface PreparedRoad {
   priority: number;
 }
 
+interface RenderDot {
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+  wave: number;
+}
+
 function normalizeIntensity(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(1, value));
@@ -100,6 +95,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
   const preparedRef = useRef<PreparedRoad[]>([]);
   const refreshVisibleRef = useRef<() => void>(() => {});
   const zoomRef = useRef<number>(map.getZoom());
+  const baseLevelRef = useRef(0);
 
   const { data } = useQuery<RoadTrafficResponse>({
     queryKey: ['/api/road-traffic'],
@@ -116,6 +112,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (!data) return;
 
+    baseLevelRef.current = normalizeIntensity(data.baseLevel);
     preparedRef.current = data.roads
       .filter((r) => r.geometry.length >= 2)
       .flatMap((r) => {
@@ -130,17 +127,15 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
 
         const intensity = normalizeIntensity(r.intensity);
         const visual = getTrafficVisual(intensity);
+        const dotSpacing = IS_MOBILE ? 200 : 145;
+        const maxDots = IS_MOBILE ? 32 : 60;
+        const density = 0.68 + intensity * 0.82;
+        const dotCount = Math.min(
+          maxDots,
+          Math.max(2, Math.round((totalLen / dotSpacing) * density)),
+        );
 
-        // Moving particles remain the only traffic geometry. Wider spacing and
-        // zoom-based detail caps prevent the old solid/glitchy bands.
-        const dotSpacing = IS_MOBILE ? 220 : 175;
-        const maxDots = IS_MOBILE ? 28 : 46;
-        const density = 0.55 + intensity * 0.95;
-        const dotCount = Math.min(maxDots, Math.max(2, Math.round((totalLen / dotSpacing) * density)));
-
-        // Congestion is readable both by color and motion: flowing traffic moves
-        // fastest while jammed traffic visibly crawls.
-        const speed = 34 - 25 * intensity;
+        const speed = 52 - 34 * intensity;
         const phases = Array.from({ length: dotCount }, (_, i) =>
           (i / dotCount + ((r.id * 0.618) % 1)) % 1,
         );
@@ -171,7 +166,6 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     canvas.style.inset = '0';
     canvas.style.pointerEvents = 'none';
     canvas.style.zIndex = '430';
-    canvas.style.mixBlendMode = 'screen';
     map.getContainer().appendChild(canvas);
     canvasRef.current = canvas;
 
@@ -183,13 +177,13 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     }
 
     const dpr = IS_MOBILE
-      ? Math.min(window.devicePixelRatio || 1, 1.5)
-      : Math.min(window.devicePixelRatio || 1, 2);
+      ? Math.min(window.devicePixelRatio || 1, 1.75)
+      : Math.min(window.devicePixelRatio || 1, 2.75);
 
     const resize = () => {
       const size = map.getSize();
-      canvas.width = size.x * dpr;
-      canvas.height = size.y * dpr;
+      canvas.width = Math.max(1, Math.floor(size.x * dpr));
+      canvas.height = Math.max(1, Math.floor(size.y * dpr));
       canvas.style.width = `${size.x}px`;
       canvas.style.height = `${size.y}px`;
     };
@@ -217,25 +211,20 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     };
 
     const start = performance.now();
-    const boundsPad = 28;
-    const FRAME_INTERVAL = IS_MOBILE ? 1000 / 20 : 1000 / 30;
-    const BRAND_PULSE_SECONDS = 1.8;
+    const boundsPad = 34;
+    const FRAME_INTERVAL = IS_MOBILE ? 1000 / 24 : 1000 / 45;
     let lastFrame = 0;
 
     let visibleRoads: PreparedRoad[] = [];
     const refreshVisible = () => {
       const zoom = map.getZoom();
       zoomRef.current = zoom;
-      const viewBounds = map.getBounds().pad(0.08);
-      const maxVisibleRoads = zoom < 11
-        ? 34
-        : zoom < 12.5
-          ? 54
-          : 90;
+      const viewBounds = map.getBounds().pad(0.1);
+      const maxVisibleRoads = zoom < 11 ? 38 : zoom < 12.5 ? 62 : 100;
 
       visibleRoads = preparedRef.current
         .filter((r) => r.totalLen >= 50 && viewBounds.intersects(r.bounds))
-        .slice(0, IS_MOBILE ? Math.min(maxVisibleRoads, 40) : maxVisibleRoads);
+        .slice(0, IS_MOBILE ? Math.min(maxVisibleRoads, 44) : maxVisibleRoads);
     };
 
     refreshVisible();
@@ -245,42 +234,108 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     map.on('moveend', refreshVisible);
     map.on('zoomend', refreshVisible);
 
+    const getWaveState = (elapsed: number, center: L.Point, size: L.Point) => {
+      const trafficLevel = baseLevelRef.current;
+      const seconds = 3.2 - trafficLevel * 0.75;
+      const maxRadius = Math.hypot(size.x, size.y / PERSPECTIVE_Y) * 0.72;
+      const minRadius = Math.max(34, Math.min(size.x, size.y) * 0.055);
+      const span = Math.max(1, maxRadius - minRadius);
+      const originPhase = (elapsed / seconds) % 1;
+      const phases = Array.from({ length: RADIAL_WAVE_COUNT }, (_, index) =>
+        (originPhase + index / RADIAL_WAVE_COUNT) % 1,
+      );
+
+      return { center, phases, minRadius, span, maxRadius, trafficLevel };
+    };
+
+    const drawRadialField = (
+      waveState: ReturnType<typeof getWaveState>,
+      zoomScale: number,
+    ) => {
+      const { center, phases, minRadius, span, trafficLevel } = waveState;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.translate(center.x, center.y);
+      ctx.scale(1, PERSPECTIVE_Y);
+
+      const floorRadius = Math.max(90, Math.min(520, span * 0.58));
+      const floor = ctx.createRadialGradient(0, 0, 0, 0, 0, floorRadius);
+      floor.addColorStop(0, `rgba(46, 230, 166, ${0.035 + trafficLevel * 0.035})`);
+      floor.addColorStop(0.42, `rgba(46, 230, 166, ${0.018 + trafficLevel * 0.022})`);
+      floor.addColorStop(1, 'rgba(46, 230, 166, 0)');
+      ctx.fillStyle = floor;
+      ctx.beginPath();
+      ctx.arc(0, 0, floorRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (const phase of phases) {
+        const radius = minRadius + phase * span;
+        const fade = Math.pow(1 - phase, 1.22);
+        const energy = (0.055 + trafficLevel * 0.085) * fade;
+
+        ctx.strokeStyle = `rgba(46, 230, 166, ${energy})`;
+        ctx.lineWidth = Math.max(0.7, (1.6 - phase * 0.75) * zoomScale / PERSPECTIVE_Y);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(125, 255, 214, ${energy * 0.38})`;
+        ctx.lineWidth = Math.max(1.4, (4.2 - phase * 2.4) * zoomScale / PERSPECTIVE_Y);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    };
+
+    const waveInfluenceAt = (
+      x: number,
+      y: number,
+      waveState: ReturnType<typeof getWaveState>,
+    ) => {
+      const dx = x - waveState.center.x;
+      const dy = (y - waveState.center.y) / PERSPECTIVE_Y;
+      const radialDistance = Math.hypot(dx, dy);
+      const sigma = Math.max(18, waveState.maxRadius * 0.025);
+      let influence = 0;
+
+      for (const phase of waveState.phases) {
+        const radius = waveState.minRadius + phase * waveState.span;
+        const delta = radialDistance - radius;
+        const hit = Math.exp(-(delta * delta) / (2 * sigma * sigma));
+        influence = Math.max(influence, hit * Math.pow(1 - phase, 0.28));
+      }
+
+      return influence;
+    };
+
     const frame = (now: number) => {
       rafRef.current = requestAnimationFrame(frame);
       if (now - lastFrame < FRAME_INTERVAL) return;
       lastFrame = now;
 
       const elapsed = (now - start) / 1000;
-      const pulseCycle = (elapsed % BRAND_PULSE_SECONDS) / BRAND_PULSE_SECONDS;
-      const pulseBeat = (Math.sin(pulseCycle * Math.PI * 2 - Math.PI / 2) + 1) / 2;
-      const pulseRingScale = 1.6 + pulseCycle * 2.3;
-      const pulseRingAlpha = Math.pow(1 - pulseCycle, 1.7);
-
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const size = map.getSize();
       ctx.clearRect(0, 0, size.x, size.y);
 
       const zoom = zoomRef.current;
-      const zoomScale = Math.min(1.25, Math.max(0.5, 0.62 + (zoom - 11) * 0.1));
-      const colors = [TRAFFIC_COLORS.flow, TRAFFIC_COLORS.slow, TRAFFIC_COLORS.jam];
+      const zoomScale = Math.min(1.38, Math.max(0.62, 0.76 + (zoom - 11) * 0.1));
+      const pulseOrigin = map.latLngToContainerPoint(
+        L.latLng(KRAKOW_PULSE_ORIGIN[0], KRAKOW_PULSE_ORIGIN[1]),
+      );
+      const waveState = getWaveState(elapsed, pulseOrigin, size);
+      drawRadialField(waveState, zoomScale);
 
+      const colors = [TRAFFIC_COLORS.flow, TRAFFIC_COLORS.slow, TRAFFIC_COLORS.jam];
       for (const color of colors) {
-        const dots: Array<{
-          x: number;
-          y: number;
-          baseRadius: number;
-          alpha: number;
-          glow: number;
-        }> = [];
+        const dots: RenderDot[] = [];
 
         for (const road of visibleRoads) {
           if (road.visual.color !== color) continue;
-
-          const detailRatio = zoom < 11
-            ? 0.45
-            : zoom < 12
-              ? 0.68
-              : 1;
+          const detailRatio = zoom < 11 ? 0.52 : zoom < 12 ? 0.76 : 1;
           const activeDots = Math.max(2, Math.ceil(road.dotCount * detailRatio));
 
           for (let d = 0; d < activeDots; d++) {
@@ -295,60 +350,61 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
               pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
             ) continue;
 
-            const baseRadius = Math.max(0.55, (0.68 + road.intensity * 0.5) * zoomScale);
-            dots.push({
-              x: pt.x,
-              y: pt.y,
-              baseRadius,
-              alpha: road.visual.dotAlpha,
-              glow: road.visual.glow,
-            });
+            const wave = waveInfluenceAt(pt.x, pt.y, waveState);
+            const radius = Math.max(
+              0.72,
+              (0.92 + road.intensity * 0.66) * road.visual.radiusScale * zoomScale,
+            );
+            dots.push({ x: pt.x, y: pt.y, radius, alpha: road.visual.dotAlpha, wave });
           }
         }
 
         if (!dots.length) continue;
 
-        // Brand pulse wave: every signal expands at exactly the same phase.
-        // This is deliberately independent from each particle's travel phase,
-        // so the whole city appears to breathe in one PlusPuls rhythm.
         ctx.save();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = Math.max(0.45, 0.65 * zoomScale);
-        ctx.shadowColor = color;
-        ctx.shadowBlur = (IS_MOBILE ? 1.8 : 3.2) * (0.75 + pulseBeat * 0.55);
-        ctx.globalAlpha = (IS_MOBILE ? 0.16 : 0.24) * pulseRingAlpha;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.11;
         ctx.beginPath();
         for (const dot of dots) {
-          const ringRadius = dot.baseRadius * pulseRingScale;
-          ctx.moveTo(dot.x + ringRadius, dot.y);
-          ctx.arc(dot.x, dot.y, ringRadius, 0, Math.PI * 2);
+          const haloRadius = dot.radius * (2.15 + dot.wave * 2.15);
+          ctx.moveTo(dot.x + haloRadius, dot.y);
+          ctx.arc(dot.x, dot.y, haloRadius, 0, Math.PI * 2);
         }
-        ctx.stroke();
+        ctx.fill();
         ctx.restore();
 
-        // Moving particle cores. Their scale and brightness rise together on the
-        // same beat, while their positions continue moving independently.
         ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
         ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        const avgGlow = dots.reduce((sum, dot) => sum + dot.glow, 0) / dots.length;
-        ctx.shadowBlur = avgGlow * zoomScale * (0.75 + pulseBeat * 0.8);
         ctx.globalAlpha = Math.min(
-          0.98,
-          (dots.reduce((sum, dot) => sum + dot.alpha, 0) / dots.length) * (0.72 + pulseBeat * 0.28),
+          0.99,
+          dots.reduce((sum, dot) => sum + dot.alpha, 0) / dots.length,
         );
         ctx.beginPath();
         for (const dot of dots) {
-          const radius = dot.baseRadius * (0.88 + pulseBeat * 0.34);
-          ctx.moveTo(dot.x + radius, dot.y);
-          ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
+          const coreRadius = dot.radius * (0.94 + dot.wave * 0.42);
+          ctx.moveTo(dot.x + coreRadius, dot.y);
+          ctx.arc(dot.x, dot.y, coreRadius, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.globalAlpha = 0.58;
+        ctx.beginPath();
+        for (const dot of dots) {
+          const highlightRadius = Math.max(0.34, dot.radius * (0.24 + dot.wave * 0.05));
+          ctx.moveTo(dot.x + highlightRadius, dot.y);
+          ctx.arc(dot.x, dot.y, highlightRadius, 0, Math.PI * 2);
         }
         ctx.fill();
         ctx.restore();
       }
 
       ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
+      ctx.globalCompositeOperation = 'source-over';
     };
 
     rafRef.current = requestAnimationFrame(frame);
