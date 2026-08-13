@@ -8,7 +8,7 @@ export function useLiveHeat(hoursAhead: number) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
-    setLoading((current) => !data && current);
+    setLoading((current) => current);
     try {
       const next = await fetchHeat(hoursAhead, signal);
       setData(next);
@@ -19,12 +19,13 @@ export function useLiveHeat(hoursAhead: number) {
     } finally {
       setLoading(false);
     }
-  }, [data, hoursAhead]);
+  }, [hoursAhead]);
 
   useEffect(() => {
     const controller = new AbortController();
+    setLoading(true);
     void refresh(controller.signal);
-    const interval = setInterval(() => void refresh(), 60_000);
+    const interval = setInterval(() => void refresh(), 30_000);
     return () => {
       controller.abort();
       clearInterval(interval);

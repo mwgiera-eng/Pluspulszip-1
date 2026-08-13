@@ -1,131 +1,27 @@
-import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MapExperience } from "@/components/MapExperience";
-import { NextMoveCard } from "@/components/NextMoveCard";
-import { useDeviceLocation } from "@/hooks/use-device-location";
+import { TrafficPulseField } from "@/components/TrafficPulseField";
 import { useLiveHeat } from "@/hooks/use-live-heat";
+import { fetchAirportFlights, fetchRoadTraffic, fetchZoneProfitHeat, type AirportFlightsResponse, type RoadTrafficResponse, type ZoneProfitHeatResponse } from "@/lib/api";
 import { theme } from "@/lib/theme";
 
-const OFFSETS = [0, 3, 6, 12] as const;
-
-export default function MapScreen() {
-  const [hoursAhead, setHoursAhead] = useState<(typeof OFFSETS)[number]>(0);
-  const { data, error, loading, refresh } = useLiveHeat(hoursAhead);
-  const { position, status } = useDeviceLocation();
-  const cells = data?.cells ?? [];
-  const score = useMemo(
-    () => Math.round(cells.slice(0, 40).reduce((sum, cell) => sum + cell.score, 0) / Math.max(1, Math.min(cells.length, 40))),
-    [cells],
-  );
-
-  return (
-    <SafeAreaView edges={["top"]} style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.liveDot} />
-        <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>
-            {status === "active" ? "GPS Active" : status === "requesting" ? "GPS Locking" : "Kraków Grid"}
-          </Text>
-          <Text style={styles.headerMeta}>
-            {status === "denied" ? "Lokalizacja wyłączona · centrum Krakowa" : "Live demand · Kraków"}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.map}>
-        <MapExperience cells={cells} position={position} />
-        <View style={styles.offsets}>
-          {OFFSETS.map((offset) => (
-            <Pressable
-              key={offset}
-              onPress={() => setHoursAhead(offset)}
-              style={[styles.offset, hoursAhead === offset && styles.offsetActive]}
-            >
-              <Text style={[styles.offsetText, hoursAhead === offset && styles.offsetTextActive]}>
-                {offset === 0 ? "LIVE" : `+${offset}h`}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        {loading && !data ? (
-          <View style={styles.centerState}>
-            <ActivityIndicator color={theme.primary} size="large" />
-            <Text style={styles.stateText}>Ładowanie siatki…</Text>
-          </View>
-        ) : null}
-        {error && !data ? (
-          <View style={styles.centerState}>
-            <Text style={styles.errorTitle}>Brak danych mapy</Text>
-            <Text style={styles.stateText}>{error}</Text>
-            <Pressable onPress={refresh} style={styles.retry}>
-              <Text style={styles.retryText}>Spróbuj ponownie</Text>
-            </Pressable>
-          </View>
-        ) : null}
-        <View style={styles.cardWrap}>
-          <NextMoveCard score={score || 72} onRefresh={refresh} />
-        </View>
-      </View>
-    </SafeAreaView>
-  );
+export default function DashboardScreen(){
+ const{data:heat,refresh:refreshHeat}=useLiveHeat(0);const[zones,setZones]=useState<ZoneProfitHeatResponse|null>(null);const[flights,setFlights]=useState<AirportFlightsResponse|null>(null);const[traffic,setTraffic]=useState<RoadTrafficResponse|null>(null);
+ const refresh=async()=>{void refreshHeat();const r=await Promise.allSettled([fetchZoneProfitHeat(0),fetchAirportFlights(),fetchRoadTraffic()]);if(r[0].status==="fulfilled")setZones(r[0].value);if(r[1].status==="fulfilled")setFlights(r[1].value);if(r[2].status==="fulfilled")setTraffic(r[2].value)};
+ useEffect(()=>{void refresh();const timer=setInterval(()=>void refresh(),60000);return()=>clearInterval(timer)},[]);
+ const score=useMemo(()=>{const c=heat?.cells??[];if(!c.length)return 0;const top=[...c].sort((a,b)=>b.score-a.score).slice(0,35);return Math.round(top.reduce((s,x)=>s+x.score,0)/top.length)},[heat]);
+ const avg=useMemo(()=>{const roads=traffic?.roads??[];return roads.length?Math.round(roads.reduce((s,r)=>s+r.intensity,0)/roads.length*100):0},[traffic]);const top=zones?.zones.slice(0,4)??[];const flightCount=(flights?.arrivals.length??0)+(flights?.departures.length??0);
+ return <SafeAreaView style={s.screen}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}><View style={s.header}><View><Text style={s.eyebrow}>PLUSPULS · KRAKÓW</Text><Text style={s.title}>City Pulse</Text><Text style={s.subtitle}>Ruch, popyt, lotnisko i plan dnia w jednym widoku.</Text></View><Pressable onPress={()=>void refresh()} style={s.refresh}><Ionicons name="refresh" size={18} color={theme.primary}/></Pressable></View>
+ <View style={s.metrics}><Metric label="Popyt" value={`${score||"—"}`} icon="flame-outline"/><Metric label="Ruch" value={`${avg||"—"}%`} icon="car-outline"/><Metric label="Loty" value={`${flightCount||"—"}`} icon="airplane-outline"/></View>
+ <View style={s.pulse}><TrafficPulseField/></View>
+ <LinearGradient colors={["#173126",theme.surface]} style={s.advice}><Text style={s.adviceLabel}>NASTĘPNY RUCH</Text><Text style={s.adviceText}>{top[0]?`Najmocniejsza strefa: ${top[0].zoneName} · score ${top[0].profitScore}`:"Analizowanie aktualnego popytu Krakowa…"}</Text><Pressable onPress={()=>router.push("/map")} style={s.action}><Text style={s.actionText}>Otwórz mapę</Text></Pressable></LinearGradient>
+ <Text style={s.section}>Zone Profit Heat</Text><View style={s.card}>{top.length?top.map((z,i)=><View key={z.zoneId} style={s.row}><Text style={s.rank}>{i+1}</Text><View style={{flex:1}}><Text style={s.rowTitle}>{z.zoneName}</Text><Text style={s.rowMeta}>{z.zoneType} · {z.demandLevel} · {z.surgeMultiplier}x</Text></View><Text style={s.score}>{z.profitScore}</Text></View>):<Text style={s.empty}>Ładowanie stref…</Text>}</View>
+ <View style={s.shortcuts}><Shortcut icon="calendar-outline" label="Plan dnia" onPress={()=>router.push("/planner")}/><Shortcut icon="wallet-outline" label="Zarobki" onPress={()=>router.push("/earnings")}/><Shortcut icon="notifications-outline" label="Alerty" onPress={()=>router.push("/notifications")}/></View></ScrollView></SafeAreaView>
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.background },
-  header: {
-    minHeight: 72,
-    paddingHorizontal: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: theme.background,
-  },
-  liveDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: theme.primary,
-    shadowColor: theme.primary,
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  headerCopy: { flex: 1 },
-  headerTitle: { color: theme.text, fontSize: 19, fontWeight: "900" },
-  headerMeta: { color: theme.muted, fontSize: 11, marginTop: 2, fontWeight: "600" },
-  map: { flex: 1, position: "relative" },
-  offsets: {
-    position: "absolute",
-    top: 12,
-    alignSelf: "center",
-    flexDirection: "row",
-    gap: 6,
-    padding: 5,
-    borderRadius: 99,
-    backgroundColor: "rgba(10,13,20,0.88)",
-    borderWidth: 1,
-    borderColor: "rgba(46,230,166,0.25)",
-  },
-  offset: { borderRadius: 99, paddingHorizontal: 11, paddingVertical: 7 },
-  offsetActive: { backgroundColor: theme.primary },
-  offsetText: { color: theme.muted, fontSize: 11, fontWeight: "900" },
-  offsetTextActive: { color: theme.background },
-  cardWrap: { position: "absolute", left: 14, right: 14, bottom: 14 },
-  centerState: {
-    position: "absolute",
-    top: "35%",
-    alignSelf: "center",
-    maxWidth: 280,
-    alignItems: "center",
-    backgroundColor: "rgba(10,13,20,0.92)",
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  stateText: { color: theme.muted, textAlign: "center", marginTop: 10, fontSize: 12 },
-  errorTitle: { color: theme.danger, fontWeight: "900", fontSize: 16 },
-  retry: { backgroundColor: theme.primary, borderRadius: 12, marginTop: 14, paddingHorizontal: 16, paddingVertical: 10 },
-  retryText: { color: theme.background, fontWeight: "900" },
-});
+function Metric({label,value,icon}:{label:string;value:string;icon:keyof typeof Ionicons.glyphMap}){return <View style={s.metric}><Ionicons name={icon} size={19} color={theme.primary}/><Text style={s.metricValue}>{value}</Text><Text style={s.metricLabel}>{label}</Text></View>}
+function Shortcut({icon,label,onPress}:{icon:keyof typeof Ionicons.glyphMap;label:string;onPress:()=>void}){return <Pressable onPress={onPress} style={s.shortcut}><Ionicons name={icon} size={20} color={theme.primary}/><Text style={s.shortcutText}>{label}</Text></Pressable>}
+const s=StyleSheet.create({screen:{flex:1,backgroundColor:theme.background},content:{padding:18,paddingBottom:34},header:{flexDirection:"row",justifyContent:"space-between",alignItems:"flex-start"},eyebrow:{color:theme.primary,fontSize:10,fontWeight:"900",letterSpacing:1.3},title:{color:theme.text,fontSize:30,fontWeight:"900",marginTop:4},subtitle:{color:theme.muted,fontSize:11,marginTop:4},refresh:{width:40,height:40,borderRadius:13,alignItems:"center",justifyContent:"center",backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border},metrics:{flexDirection:"row",gap:8,marginTop:16},metric:{flex:1,minHeight:91,padding:11,borderRadius:15,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,justifyContent:"space-between"},metricValue:{color:theme.text,fontSize:18,fontWeight:"900"},metricLabel:{color:theme.muted,fontSize:9,fontWeight:"700"},pulse:{height:250,borderRadius:20,overflow:"hidden",marginTop:12,borderWidth:1,borderColor:theme.border},advice:{padding:15,borderRadius:18,marginTop:12,borderWidth:1,borderColor:"rgba(46,230,166,.24)"},adviceLabel:{color:theme.primary,fontSize:9,fontWeight:"900",letterSpacing:1},adviceText:{color:theme.text,fontSize:14,fontWeight:"800",marginTop:5},action:{alignSelf:"flex-start",marginTop:10,paddingHorizontal:12,paddingVertical:7,borderRadius:10,backgroundColor:theme.primary},actionText:{color:theme.background,fontSize:9,fontWeight:"900"},section:{color:theme.text,fontSize:17,fontWeight:"900",marginTop:20,marginBottom:8},card:{backgroundColor:theme.surface,borderRadius:17,borderWidth:1,borderColor:theme.border,overflow:"hidden"},row:{minHeight:60,flexDirection:"row",alignItems:"center",gap:10,paddingHorizontal:12,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:theme.border},rank:{width:20,color:theme.primary,fontSize:11,fontWeight:"900"},rowTitle:{color:theme.text,fontSize:11,fontWeight:"800"},rowMeta:{color:theme.muted,fontSize:8.5,marginTop:2},score:{color:theme.primary,fontSize:18,fontWeight:"900"},empty:{color:theme.muted,fontSize:10,padding:18,textAlign:"center"},shortcuts:{flexDirection:"row",gap:8,marginTop:14},shortcut:{flex:1,minHeight:62,alignItems:"center",justifyContent:"center",gap:4,borderRadius:14,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border},shortcutText:{color:theme.text,fontSize:9,fontWeight:"800"}});
