@@ -40,12 +40,8 @@ const TRAFFIC_COLORS = {
 } as const;
 
 function getTrafficVisual(intensity: number): TrafficVisual {
-  if (intensity >= 0.7) {
-    return { color: TRAFFIC_COLORS.jam, dotAlpha: 0.98, radiusScale: 1.18 };
-  }
-  if (intensity >= 0.42) {
-    return { color: TRAFFIC_COLORS.slow, dotAlpha: 0.94, radiusScale: 1.08 };
-  }
+  if (intensity >= 0.7) return { color: TRAFFIC_COLORS.jam, dotAlpha: 0.98, radiusScale: 1.18 };
+  if (intensity >= 0.42) return { color: TRAFFIC_COLORS.slow, dotAlpha: 0.94, radiusScale: 1.08 };
   return { color: TRAFFIC_COLORS.flow, dotAlpha: 0.9, radiusScale: 1 };
 }
 
@@ -111,7 +107,6 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
 
   useEffect(() => {
     if (!data) return;
-
     baseLevelRef.current = normalizeIntensity(data.baseLevel);
     preparedRef.current = data.roads
       .filter((r) => r.geometry.length >= 2)
@@ -130,11 +125,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         const dotSpacing = IS_MOBILE ? 200 : 145;
         const maxDots = IS_MOBILE ? 32 : 60;
         const density = 0.68 + intensity * 0.82;
-        const dotCount = Math.min(
-          maxDots,
-          Math.max(2, Math.round((totalLen / dotSpacing) * density)),
-        );
-
+        const dotCount = Math.min(maxDots, Math.max(2, Math.round((totalLen / dotSpacing) * density)));
         const speed = 52 - 34 * intensity;
         const phases = Array.from({ length: dotCount }, (_, i) =>
           (i / dotCount + ((r.id * 0.618) % 1)) % 1,
@@ -221,7 +212,6 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
       zoomRef.current = zoom;
       const viewBounds = map.getBounds().pad(0.1);
       const maxVisibleRoads = zoom < 11 ? 38 : zoom < 12.5 ? 62 : 100;
-
       visibleRoads = preparedRef.current
         .filter((r) => r.totalLen >= 50 && viewBounds.intersects(r.bounds))
         .slice(0, IS_MOBILE ? Math.min(maxVisibleRoads, 44) : maxVisibleRoads);
@@ -234,6 +224,8 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     map.on('moveend', refreshVisible);
     map.on('zoomend', refreshVisible);
 
+    // Invisible radial reference field. This state is never rendered directly;
+    // it only changes particle energy as wavefronts pass over moving points.
     const getWaveState = (elapsed: number, center: L.Point, size: L.Point) => {
       const trafficLevel = baseLevelRef.current;
       const seconds = 3.2 - trafficLevel * 0.75;
@@ -244,50 +236,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
       const phases = Array.from({ length: RADIAL_WAVE_COUNT }, (_, index) =>
         (originPhase + index / RADIAL_WAVE_COUNT) % 1,
       );
-
-      return { center, phases, minRadius, span, maxRadius, trafficLevel };
-    };
-
-    const drawRadialField = (
-      waveState: ReturnType<typeof getWaveState>,
-      zoomScale: number,
-    ) => {
-      const { center, phases, minRadius, span, trafficLevel } = waveState;
-
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.translate(center.x, center.y);
-      ctx.scale(1, PERSPECTIVE_Y);
-
-      const floorRadius = Math.max(90, Math.min(520, span * 0.58));
-      const floor = ctx.createRadialGradient(0, 0, 0, 0, 0, floorRadius);
-      floor.addColorStop(0, `rgba(46, 230, 166, ${0.035 + trafficLevel * 0.035})`);
-      floor.addColorStop(0.42, `rgba(46, 230, 166, ${0.018 + trafficLevel * 0.022})`);
-      floor.addColorStop(1, 'rgba(46, 230, 166, 0)');
-      ctx.fillStyle = floor;
-      ctx.beginPath();
-      ctx.arc(0, 0, floorRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      for (const phase of phases) {
-        const radius = minRadius + phase * span;
-        const fade = Math.pow(1 - phase, 1.22);
-        const energy = (0.055 + trafficLevel * 0.085) * fade;
-
-        ctx.strokeStyle = `rgba(46, 230, 166, ${energy})`;
-        ctx.lineWidth = Math.max(0.7, (1.6 - phase * 0.75) * zoomScale / PERSPECTIVE_Y);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.strokeStyle = `rgba(125, 255, 214, ${energy * 0.38})`;
-        ctx.lineWidth = Math.max(1.4, (4.2 - phase * 2.4) * zoomScale / PERSPECTIVE_Y);
-        ctx.beginPath();
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      ctx.restore();
+      return { center, phases, minRadius, span, maxRadius };
     };
 
     const waveInfluenceAt = (
@@ -307,7 +256,6 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         const hit = Math.exp(-(delta * delta) / (2 * sigma * sigma));
         influence = Math.max(influence, hit * Math.pow(1 - phase, 0.28));
       }
-
       return influence;
     };
 
@@ -327,7 +275,6 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         L.latLng(KRAKOW_PULSE_ORIGIN[0], KRAKOW_PULSE_ORIGIN[1]),
       );
       const waveState = getWaveState(elapsed, pulseOrigin, size);
-      drawRadialField(waveState, zoomScale);
 
       const colors = [TRAFFIC_COLORS.flow, TRAFFIC_COLORS.slow, TRAFFIC_COLORS.jam];
       for (const color of colors) {
@@ -340,8 +287,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
 
           for (let d = 0; d < activeDots; d++) {
             const phase = road.phases[Math.floor((d / activeDots) * road.phases.length)] ?? 0;
-            const dist =
-              ((phase * road.totalLen + elapsed * road.speed) % road.totalLen + road.totalLen) % road.totalLen;
+            const dist = ((phase * road.totalLen + elapsed * road.speed) % road.totalLen + road.totalLen) % road.totalLen;
             const ll = pointAt(road, dist);
             const pt = map.latLngToContainerPoint(ll);
 
@@ -377,10 +323,7 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.fillStyle = color;
-        ctx.globalAlpha = Math.min(
-          0.99,
-          dots.reduce((sum, dot) => sum + dot.alpha, 0) / dots.length,
-        );
+        ctx.globalAlpha = Math.min(0.99, dots.reduce((sum, dot) => sum + dot.alpha, 0) / dots.length);
         ctx.beginPath();
         for (const dot of dots) {
           const coreRadius = dot.radius * (0.94 + dot.wave * 0.42);
