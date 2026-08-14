@@ -46,6 +46,13 @@
     },
     "runtimeVersion": {
       "policy": "appVersion"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "abd56f8d-871a-48b0-9364-ffe9a7dffb26"
+      }
+    },
+    "owner": "mwg25"
   }
 }
