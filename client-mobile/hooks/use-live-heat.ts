@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchHeat } from "@/lib/api";
 import type { HeatResponse } from "@/lib/types";
 
-export function useLiveHeat(hoursAhead: number) {
+export function useLiveHeat(hoursAhead: number, minutesAhead = 0) {
   const [data, setData] = useState<HeatResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -10,7 +10,7 @@ export function useLiveHeat(hoursAhead: number) {
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading((current) => current);
     try {
-      const next = await fetchHeat(hoursAhead, signal);
+      const next = await fetchHeat(hoursAhead, minutesAhead, signal);
       setData(next);
       setError(null);
     } catch (reason) {
@@ -19,7 +19,7 @@ export function useLiveHeat(hoursAhead: number) {
     } finally {
       setLoading(false);
     }
-  }, [hoursAhead]);
+  }, [hoursAhead, minutesAhead]);
 
   useEffect(() => {
     const controller = new AbortController();

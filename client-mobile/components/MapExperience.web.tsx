@@ -6,6 +6,10 @@ import { heatColor } from "@/lib/map";
 type Props = {
   cells: HeatCell[];
   position: DevicePosition | null;
+  hoursAhead?: number;
+  minutesAhead?: number;
+  onTimeChange?: (hours: number, minutes: number) => void;
+  heatError?: string | null;
 };
 
 const BOUNDS = { north: 50.12, south: 49.98, west: 19.72, east: 20.09 };

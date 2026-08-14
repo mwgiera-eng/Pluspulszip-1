@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import type { HeatResponse } from "./types";
 
-const DEFAULT_API_URL = "https://pluspuls-api.onrender.com";
+const DEFAULT_API_URL = "https://pluspuls-app.onrender.com";
 
 export type RoadSegment = {
   id: number;
@@ -37,6 +37,26 @@ export type ZoneProfitHeatResponse = {
   transitionNarrative: string;
   targetTime: string;
   regime: string;
+};
+
+export type MapPoi = {
+  id?: number | string;
+  name?: string;
+  type?: string;
+  category?: string;
+  lat: number | string;
+  lng: number | string;
+};
+
+export type MapDataResponse = { pois?: MapPoi[] };
+
+export type RouteGeometryData = {
+  id: string;
+  fromShort: string;
+  toShort: string;
+  estimatedPricePLN: number;
+  role: "nearest_profitable" | "top_route" | "drive_to_pickup";
+  geometry: [number, number][];
 };
 
 export type ScrapedFlight = {
@@ -147,9 +167,10 @@ function isHeatResponse(value: unknown): value is HeatResponse {
   );
 }
 
-export async function fetchHeat(hoursAhead: number, signal?: AbortSignal): Promise<HeatResponse> {
+export async function fetchHeat(hoursAhead: number, minutesAhead = 0, signal?: AbortSignal): Promise<HeatResponse> {
   const boundedHours = Math.max(0, Math.min(12, Math.round(hoursAhead)));
-  const query = new URLSearchParams({ hoursAhead: String(boundedHours), minutesAhead: "0" });
+  const boundedMinutes = Math.max(0, Math.min(59, Math.round(minutesAhead)));
+  const query = new URLSearchParams({ hoursAhead: String(boundedHours), minutesAhead: String(boundedMinutes) });
   const response = await fetch(apiUrl(`/api/hex-heat?${query.toString()}`), {
     method: "GET",
     headers: { Accept: "application/json" },
@@ -164,6 +185,20 @@ export async function fetchHeat(hoursAhead: number, signal?: AbortSignal): Promi
 
 export function fetchRoadTraffic(signal?: AbortSignal) {
   return apiFetch<RoadTrafficResponse>("/api/road-traffic", { signal });
+}
+
+export function fetchMapData(signal?: AbortSignal) {
+  return apiFetch<MapDataResponse>("/api/map-data", { signal });
+}
+
+export function fetchRouteGeometries(position?: { lat: number; lng: number } | null, signal?: AbortSignal) {
+  const query = new URLSearchParams();
+  if (position && Number.isFinite(position.lat) && Number.isFinite(position.lng)) {
+    query.set("lat", String(position.lat));
+    query.set("lng", String(position.lng));
+  }
+  const suffix = query.size ? `?${query.toString()}` : "";
+  return apiFetch<RouteGeometryData[]>(`/api/route-geometries${suffix}`, { signal });
 }
 
 export function fetchZoneProfitHeat(hoursAhead: number, minutesAhead = 0, signal?: AbortSignal) {

@@ -1,212 +1,176 @@
-import { useMemo } from "react";
-import MapView, { Circle, Marker, Polygon } from "react-native-maps";
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
+import {
+  fetchMapData,
+  fetchRoadTraffic,
+  fetchRouteGeometries,
+  fetchZoneProfitHeat,
+  type MapPoi,
+  type RoadSegment,
+  type RouteGeometryData,
+  type ZoneProfitHeatData,
+} from "@/lib/api";
 import type { DevicePosition, HeatCell } from "@/lib/types";
-import { heatColor, hexCoordinates } from "@/lib/map";
-import { theme } from "@/lib/theme";
+import { LIVE_DEMAND_MAP_HTML } from "./live-map-html";
 
 type Props = {
   cells: HeatCell[];
   position: DevicePosition | null;
+  hoursAhead?: number;
+  minutesAhead?: number;
+  onTimeChange?: (hours: number, minutes: number) => void;
+  heatError?: string | null;
 };
 
-const mapsEnabled = process.env.EXPO_PUBLIC_ENABLE_GOOGLE_MAPS === "true";
+const ALLOWED_TIMES = new Set(["0:0", "0:30", "1:0", "2:0", "3:0", "6:0", "12:0"]);
+const validNumber = (value: unknown, min: number, max: number) => {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= min && number <= max ? number : null;
+};
+const text = (value: unknown) => String(value ?? "").slice(0, 120);
 
-export function MapExperience({ cells, position }: Props) {
-  const visibleCells = useMemo(
-    () => [...cells].sort((a, b) => b.score - a.score).slice(0, 180),
-    [cells],
-  );
+function cleanGeometry(value: unknown, limit: number) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, limit).flatMap((point) => {
+    if (!Array.isArray(point)) return [];
+    const lat = validNumber(point[0], 49, 51);
+    const lng = validNumber(point[1], 18, 22);
+    return lat === null || lng === null ? [] : ([[lat, lng]] as [number, number][]);
+  });
+}
 
-  const fallbackBounds = useMemo(() => {
-    if (!visibleCells.length) return null;
+function cleanRoads(roads: RoadSegment[]) {
+  return roads.slice(0, 180).flatMap((road) => {
+    const geometry = cleanGeometry(road.geometry, 180);
+    if (geometry.length < 2) return [];
+    return [{ id: validNumber(road.id, -1_000_000_000, 1_000_000_000) ?? 0, highway: text(road.highway), intensity: validNumber(road.intensity, 0, 1) ?? 0, geometry }];
+  });
+}
 
-    return visibleCells.reduce(
-      (bounds, cell) => ({
-        minLat: Math.min(bounds.minLat, cell.lat),
-        maxLat: Math.max(bounds.maxLat, cell.lat),
-        minLng: Math.min(bounds.minLng, cell.lng),
-        maxLng: Math.max(bounds.maxLng, cell.lng),
-      }),
-      {
-        minLat: visibleCells[0]!.lat,
-        maxLat: visibleCells[0]!.lat,
-        minLng: visibleCells[0]!.lng,
-        maxLng: visibleCells[0]!.lng,
-      },
-    );
-  }, [visibleCells]);
+function cleanZones(zones: ZoneProfitHeatData[]) {
+  return zones.slice(0, 100).flatMap((zone) => {
+    const lat = validNumber(zone.lat, 49, 51);
+    const lng = validNumber(zone.lng, 18, 22);
+    if (lat === null || lng === null) return [];
+    return [{ zoneName: text(zone.zoneName), lat, lng, radius: validNumber(zone.radius, 20, 5000) ?? 450, profitScore: validNumber(zone.profitScore, 0, 100) ?? 0 }];
+  });
+}
 
-  if (!mapsEnabled) {
-    const latSpan = Math.max((fallbackBounds?.maxLat ?? 1) - (fallbackBounds?.minLat ?? 0), 0.0001);
-    const lngSpan = Math.max((fallbackBounds?.maxLng ?? 1) - (fallbackBounds?.minLng ?? 0), 0.0001);
+function cleanPois(pois: MapPoi[]) {
+  return pois.slice(0, 180).flatMap((poi) => {
+    const lat = validNumber(poi.lat, 49, 51);
+    const lng = validNumber(poi.lng, 18, 22);
+    return lat === null || lng === null ? [] : [{ name: text(poi.name), category: text(poi.category || poi.type), lat, lng }];
+  });
+}
 
-    return (
-      <View style={[styles.shell, styles.fallbackShell]}>
-        <View style={styles.fallbackHeader}>
-          <Text style={styles.fallbackEyebrow}>KRAKÓW TRAFFIC PULSE</Text>
-          <Text style={styles.fallbackTitle}>Live traffic active</Text>
-          <Text style={styles.fallbackCopy}>
-            Map tiles are temporarily disabled. Traffic intensity remains available without Google Maps.
-          </Text>
-        </View>
+function cleanRoutes(routes: RouteGeometryData[]) {
+  return routes.slice(0, 12).flatMap((route) => {
+    const geometry = cleanGeometry(route.geometry, 240);
+    if (geometry.length < 2) return [];
+    return [{ id: text(route.id), fromShort: text(route.fromShort), toShort: text(route.toShort), estimatedPricePLN: validNumber(route.estimatedPricePLN, 0, 100_000) ?? 0, role: text(route.role), geometry }];
+  });
+}
 
-        <View style={styles.signalField}>
-          {visibleCells.slice(0, 96).map((cell) => {
-            const x = 4 + ((cell.lng - (fallbackBounds?.minLng ?? cell.lng)) / lngSpan) * 92;
-            const y = 4 + (1 - (cell.lat - (fallbackBounds?.minLat ?? cell.lat)) / latSpan) * 92;
-            const size = Math.max(5, Math.min(14, 5 + cell.score / 12));
-            const color = heatColor(cell.score);
+export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 0, onTimeChange, heatError }: Props) {
+  const webView = useRef<WebView>(null);
+  const [ready, setReady] = useState(false);
+  const [roads, setRoads] = useState<RoadSegment[]>([]);
+  const [zones, setZones] = useState<ZoneProfitHeatData[]>([]);
+  const [pois, setPois] = useState<MapPoi[]>([]);
+  const [routes, setRoutes] = useState<RouteGeometryData[]>([]);
+  const [baseLevel, setBaseLevel] = useState(0);
+  const [narrative, setNarrative] = useState("");
+  const [targetTime, setTargetTime] = useState("LIVE");
+  const [sourceError, setSourceError] = useState<string | null>(null);
 
-            return (
-              <View
-                key={cell.id}
-                style={[
-                  styles.signal,
-                  {
-                    left: `${x}%`,
-                    top: `${y}%`,
-                    width: size,
-                    height: size,
-                    borderRadius: size / 2,
-                    backgroundColor: color.web,
-                    borderColor: color.stroke,
-                  },
-                ]}
-              />
-            );
-          })}
-          <View pointerEvents="none" style={styles.gridOverlay} />
-        </View>
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      const [traffic, mapData, routeData] = await Promise.allSettled([
+        fetchRoadTraffic(controller.signal), fetchMapData(controller.signal), fetchRouteGeometries(position, controller.signal),
+      ]);
+      if (traffic.status === "fulfilled") { setRoads(traffic.value.roads); setBaseLevel(traffic.value.baseLevel); }
+      if (mapData.status === "fulfilled") setPois(mapData.value.pois ?? []);
+      if (routeData.status === "fulfilled") setRoutes(routeData.value);
+      setSourceError(traffic.status === "rejected" ? "Road signals temporarily unavailable" : null);
+    };
+    void load();
+    const interval = setInterval(() => void load(), 30_000);
+    return () => { controller.abort(); clearInterval(interval); };
+  }, [position?.lat, position?.lng]);
 
-        <View style={styles.fallbackFooter}>
-          <Text style={styles.fallbackStatus}>{visibleCells.length} live traffic cells</Text>
-          <Text style={styles.fallbackStatus}>{position ? "GPS active" : "Kraków center"}</Text>
-        </View>
-      </View>
-    );
-  }
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchZoneProfitHeat(hoursAhead, minutesAhead, controller.signal)
+      .then((data) => { setZones(data.zones); setNarrative(data.transitionNarrative); setTargetTime(data.targetTime); })
+      .catch((reason: unknown) => {
+        if (!(reason instanceof Error && reason.name === "AbortError")) setSourceError("Forecast temporarily unavailable");
+      });
+    return () => controller.abort();
+  }, [hoursAhead, minutesAhead]);
+
+  const payload = useMemo(() => ({
+    cells: cells.slice(0, 700).flatMap((cell) => {
+      const lat = validNumber(cell.lat, 49, 51);
+      const lng = validNumber(cell.lng, 18, 22);
+      return lat === null || lng === null ? [] : [{ id: text(cell.id), lat, lng, radius: validNumber(cell.radius, 20, 5000) ?? 300, score: validNumber(cell.score, 0, 100) ?? 0 }];
+    }),
+    roads: cleanRoads(roads), zones: cleanZones(zones), pois: cleanPois(pois), routes: cleanRoutes(routes),
+    position: position ? { lat: validNumber(position.lat, 49, 51), lng: validNumber(position.lng, 18, 22), accuracy: validNumber(position.accuracy, 1, 5000) ?? 100 } : null,
+    baseLevel: validNumber(baseLevel, 0, 1) ?? 0,
+    narrative: text(narrative), targetTime: text(targetTime), error: text(heatError || sourceError),
+  }), [baseLevel, cells, heatError, narrative, pois, position, roads, routes, sourceError, targetTime, zones]);
+
+  const sendPayload = useCallback(() => {
+    if (ready) webView.current?.postMessage(JSON.stringify({ type: "map-data", payload }));
+  }, [payload, ready]);
+  useEffect(() => { sendPayload(); }, [sendPayload]);
+
+  const onMessage = useCallback((event: WebViewMessageEvent) => {
+    try {
+      const message: unknown = JSON.parse(event.nativeEvent.data);
+      if (!message || typeof message !== "object") return;
+      const value = message as { type?: unknown; hours?: unknown; minutes?: unknown };
+      if (value.type === "ready") { setReady(true); return; }
+      if (value.type !== "time") return;
+      const hours = Number(value.hours);
+      const minutes = Number(value.minutes);
+      if (ALLOWED_TIMES.has(`${hours}:${minutes}`)) onTimeChange?.(hours, minutes);
+    } catch { /* Ignore malformed page messages. */ }
+  }, [onTimeChange]);
+
+  const allowNavigation = useCallback((request: WebViewNavigation) => {
+    if (request.url === "about:blank") return true;
+    try {
+      return new URL(request.url).origin === "https://pluspuls.local";
+    } catch {
+      return false;
+    }
+  }, []);
 
   return (
     <View style={styles.shell}>
-      <MapView
-        style={StyleSheet.absoluteFill}
-        initialRegion={{
-          latitude: position?.lat ?? 50.0647,
-          longitude: position?.lng ?? 19.945,
-          latitudeDelta: 0.12,
-          longitudeDelta: 0.12,
-        }}
-        userInterfaceStyle="light"
-        showsCompass={false}
-        showsMyLocationButton
-        showsUserLocation={Boolean(position)}
-        toolbarEnabled={false}
-      >
-        {visibleCells.map((cell) => {
-          const color = heatColor(cell.score);
-          return (
-            <Polygon
-              key={cell.id}
-              coordinates={hexCoordinates(cell)}
-              fillColor={color.fill}
-              strokeColor={color.stroke}
-              strokeWidth={1}
-            />
-          );
-        })}
-        {position ? (
-          <>
-            <Circle
-              center={{ latitude: position.lat, longitude: position.lng }}
-              radius={Math.max(position.accuracy, 40)}
-              fillColor="rgba(46,230,166,0.10)"
-              strokeColor="rgba(46,230,166,0.64)"
-              strokeWidth={1}
-            />
-            <Marker
-              coordinate={{ latitude: position.lat, longitude: position.lng }}
-              pinColor={theme.primary}
-              title="Twoja lokalizacja"
-            />
-          </>
-        ) : null}
-      </MapView>
-      <View pointerEvents="none" style={styles.vignette} />
+      <WebView
+        ref={webView}
+        source={{ html: LIVE_DEMAND_MAP_HTML, baseUrl: "https://pluspuls.local" }}
+        originWhitelist={["https://pluspuls.local", "about:blank"]}
+        onMessage={onMessage}
+        onLoadEnd={() => setReady(true)}
+        onShouldStartLoadWithRequest={allowNavigation}
+        javaScriptEnabled
+        domStorageEnabled={false}
+        allowFileAccess={false}
+        allowUniversalAccessFromFileURLs={false}
+        mixedContentMode="never"
+        setSupportMultipleWindows={false}
+        overScrollMode="never"
+        accessibilityLabel="Live PlusPuls demand and traffic map"
+        style={styles.webView}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  shell: {
-    flex: 1,
-    overflow: "hidden",
-    backgroundColor: "#E9EEF3",
-  },
-  fallbackShell: {
-    backgroundColor: theme.background,
-    padding: 16,
-  },
-  fallbackHeader: {
-    zIndex: 2,
-  },
-  fallbackEyebrow: {
-    color: theme.primary,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-  },
-  fallbackTitle: {
-    color: theme.text,
-    fontSize: 20,
-    fontWeight: "900",
-    marginTop: 4,
-  },
-  fallbackCopy: {
-    color: theme.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 5,
-    maxWidth: 360,
-  },
-  signalField: {
-    flex: 1,
-    minHeight: 210,
-    marginTop: 14,
-    borderRadius: 18,
-    overflow: "hidden",
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  signal: {
-    position: "absolute",
-    borderWidth: 1,
-    transform: [{ translateX: -4 }, { translateY: -4 }],
-  },
-  gridOverlay: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderWidth: 1,
-    borderColor: "rgba(46,230,166,0.12)",
-  },
-  fallbackFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  fallbackStatus: {
-    color: theme.muted,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  vignette: {
-    position: "absolute",
-    inset: 0,
-    borderWidth: 1,
-    borderColor: "rgba(46,230,166,0.28)",
-  },
-});
+const styles = StyleSheet.create({ shell: { flex: 1, backgroundColor: "#070a10" }, webView: { flex: 1, backgroundColor: "#070a10" } });

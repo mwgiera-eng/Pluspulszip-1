@@ -16,6 +16,14 @@ npm run web
 Set `EXPO_PUBLIC_API_URL` to the HTTPS Render API origin. Variables prefixed
 with `EXPO_PUBLIC_` are bundled into the app and must never contain secrets.
 
+## Live map
+
+Android renders the `dev` branch map from reference commit `2849e90`: CARTO/OSM
+tiles, demand hexes, animated road-flow signals, layers and time forecasts. The
+radial signal remains an invisible point-response input; no radial rings are
+drawn. API data crosses a validated native/WebView bridge and the page CSP only
+permits pinned Leaflet assets and CARTO tiles. No Google Maps key is required.
+
 ## First EAS setup
 
 ```bash

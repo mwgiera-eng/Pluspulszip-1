@@ -9,14 +9,14 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false"
+        "EAS_NO_FROZEN_LOCKFILE": "1"
       }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false"
+        "EAS_NO_FROZEN_LOCKFILE": "1"
       },
       "android": {
         "buildType": "apk"
@@ -27,7 +27,7 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_ENABLE_GOOGLE_MAPS": "false"
+        "EAS_NO_FROZEN_LOCKFILE": "1"
       },
       "android": {
         "buildType": "apk"

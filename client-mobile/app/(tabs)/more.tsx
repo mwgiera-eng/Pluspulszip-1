@@ -23,8 +23,8 @@ export default function MoreScreen() {
         <View style={styles.status}>
           <View style={styles.statusIcon}><Ionicons name="shield-checkmark-outline" size={23} color={theme.primary} /></View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.statusTitle}>Android map-free mode</Text>
-            <Text style={styles.statusText}>Google Maps pozostaje wyłączone. Ruch drogowy, heatmapa, plan dnia i sygnały korzystają z API PlusPuls.</Text>
+            <Text style={styles.statusTitle}>Live OpenStreetMap</Text>
+            <Text style={styles.statusText}>Mapa CARTO/OSM pokazuje heatmapę, ruch drogowy i sygnały PlusPuls bez klucza Google Maps.</Text>
           </View>
         </View>
 

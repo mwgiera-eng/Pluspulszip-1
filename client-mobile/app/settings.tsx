@@ -6,7 +6,6 @@ import { productionApiUrl } from "@/lib/api";
 import { theme } from "@/lib/theme";
 
 export default function SettingsScreen() {
-  const mapsEnabled = process.env.EXPO_PUBLIC_ENABLE_GOOGLE_MAPS === "true";
   const api = productionApiUrl();
 
   return (
@@ -17,8 +16,8 @@ export default function SettingsScreen() {
         <Text style={styles.section}>Połączenie</Text>
         <View style={styles.card}>
           <Row icon="cloud-outline" title="PlusPuls API" detail={api} value="HTTPS" />
-          <Row icon="map-outline" title="Google Maps" detail="Natywny provider mapy" value={mapsEnabled ? "ON" : "OFF"} valueColor={mapsEnabled ? theme.primary : theme.warning} />
-          <Row icon="pulse-outline" title="Traffic Pulse" detail="Ruch drogowy i heatmapa bez Google Maps" value="LIVE" valueColor={theme.primary} />
+          <Row icon="map-outline" title="OpenStreetMap / CARTO" detail="Ciemne kafelki mapy bez klucza Google" value="LIVE" valueColor={theme.primary} />
+          <Row icon="pulse-outline" title="Traffic Pulse" detail="Heatmapa i animowane sygnały drogowe z mapy PlusPuls" value="LIVE" valueColor={theme.primary} />
         </View>
 
         <Text style={styles.section}>Prywatność</Text>
