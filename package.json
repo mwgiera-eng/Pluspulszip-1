@@ -8,6 +8,7 @@
     "build": "tsx script/build.ts",
     "start": "node dist/index.cjs",
     "check": "tsc",
+    "test": "tsx --test server/auth.test.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
