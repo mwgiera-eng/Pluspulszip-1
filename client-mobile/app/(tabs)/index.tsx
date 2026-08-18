@@ -1,27 +1,52 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TrafficPulseField } from "@/components/TrafficPulseField";
-import { useLiveHeat } from "@/hooks/use-live-heat";
-import { fetchAirportFlights, fetchRoadTraffic, fetchZoneProfitHeat, type AirportFlightsResponse, type RoadTrafficResponse, type ZoneProfitHeatResponse } from "@/lib/api";
+import { useDeviceLocation } from "@/hooks/use-device-location";
+import { fetchZoneProfitHeat, type ZoneProfitHeatResponse } from "@/lib/api";
+import { chooseDriverGuidance } from "@/lib/driver-guidance";
+import { presentGuidance, readNativeGuidanceSettings } from "@/lib/native-guidance";
 import { theme } from "@/lib/theme";
 
-export default function DashboardScreen(){
- const{data:heat,refresh:refreshHeat}=useLiveHeat(0);const[zones,setZones]=useState<ZoneProfitHeatResponse|null>(null);const[flights,setFlights]=useState<AirportFlightsResponse|null>(null);const[traffic,setTraffic]=useState<RoadTrafficResponse|null>(null);
- const refresh=async()=>{void refreshHeat();const r=await Promise.allSettled([fetchZoneProfitHeat(0),fetchAirportFlights(),fetchRoadTraffic()]);if(r[0].status==="fulfilled")setZones(r[0].value);if(r[1].status==="fulfilled")setFlights(r[1].value);if(r[2].status==="fulfilled")setTraffic(r[2].value)};
- useEffect(()=>{void refresh();const timer=setInterval(()=>void refresh(),60000);return()=>clearInterval(timer)},[]);
- const score=useMemo(()=>{const c=heat?.cells??[];if(!c.length)return 0;const top=[...c].sort((a,b)=>b.score-a.score).slice(0,35);return Math.round(top.reduce((s,x)=>s+x.score,0)/top.length)},[heat]);
- const avg=useMemo(()=>{const roads=traffic?.roads??[];return roads.length?Math.round(roads.reduce((s,r)=>s+r.intensity,0)/roads.length*100):0},[traffic]);const top=zones?.zones.slice(0,4)??[];const flightCount=(flights?.arrivals.length??0)+(flights?.departures.length??0);
- return <SafeAreaView style={s.screen}><ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}><View style={s.header}><View><Text style={s.eyebrow}>PLUSPULS · KRAKÓW</Text><Text style={s.title}>City Pulse</Text><Text style={s.subtitle}>Ruch, popyt, lotnisko i plan dnia w jednym widoku.</Text></View><Pressable onPress={()=>void refresh()} style={s.refresh}><Ionicons name="refresh" size={18} color={theme.primary}/></Pressable></View>
- <View style={s.metrics}><Metric label="Popyt" value={`${score||"—"}`} icon="flame-outline"/><Metric label="Ruch" value={`${avg||"—"}%`} icon="car-outline"/><Metric label="Loty" value={`${flightCount||"—"}`} icon="airplane-outline"/></View>
- <View style={s.pulse}><TrafficPulseField/></View>
- <LinearGradient colors={["#173126",theme.surface]} style={s.advice}><Text style={s.adviceLabel}>NASTĘPNY RUCH</Text><Text style={s.adviceText}>{top[0]?`Najmocniejsza strefa: ${top[0].zoneName} · score ${top[0].profitScore}`:"Analizowanie aktualnego popytu Krakowa…"}</Text><Pressable onPress={()=>router.push("/map" as never)} style={s.action}><Text style={s.actionText}>Otwórz mapę</Text></Pressable></LinearGradient>
- <Text style={s.section}>Zone Profit Heat</Text><View style={s.card}>{top.length?top.map((z,i)=><View key={z.zoneId} style={s.row}><Text style={s.rank}>{i+1}</Text><View style={{flex:1}}><Text style={s.rowTitle}>{z.zoneName}</Text><Text style={s.rowMeta}>{z.zoneType} · {z.demandLevel} · {z.surgeMultiplier}x</Text></View><Text style={s.score}>{z.profitScore}</Text></View>):<Text style={s.empty}>Ładowanie stref…</Text>}</View>
- <View style={s.shortcuts}><Shortcut icon="calendar-outline" label="Plan dnia" onPress={()=>router.push("/planner" as never)}/><Shortcut icon="wallet-outline" label="Zarobki" onPress={()=>router.push("/earnings" as never)}/><Shortcut icon="notifications-outline" label="Alerty" onPress={()=>router.push("/notifications" as never)}/></View></ScrollView></SafeAreaView>
+export default function DashboardScreen() {
+  const [zones, setZones] = useState<ZoneProfitHeatResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { position, status, request } = useDeviceLocation();
+  const announced = useRef<string | null>(null);
+
+  const refresh = async () => {
+    setLoading(true);
+    try { setZones(await fetchZoneProfitHeat(0)); setError(null); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Sygnał jest chwilowo niedostępny."); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { void refresh(); const timer = setInterval(() => void refresh(), 60_000); return () => clearInterval(timer); }, []);
+  const guidance = useMemo(() => chooseDriverGuidance(zones?.zones ?? [], position), [position, zones]);
+  useEffect(() => {
+    if (!guidance || status !== "active" || announced.current === String(guidance.target.zoneId)) return;
+    announced.current = String(guidance.target.zoneId);
+    void readNativeGuidanceSettings().then((settings) => presentGuidance(guidance.instruction, settings));
+  }, [guidance, status]);
+
+  return <SafeAreaView style={styles.screen}><View style={styles.content}>
+    <View style={styles.header}><View><Text style={styles.eyebrow}>PLUSPULS · KRAKÓW</Text><Text style={styles.title}>Następny ruch</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Odśwież wskazówkę" onPress={() => void refresh()} style={styles.refresh}>{loading ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="refresh" size={19} color={theme.primary} />}</Pressable></View>
+    <Text style={styles.subtitle}>Jedna wskazówka oparta na Twojej pozycji i aktualnym potencjale stref.</Text>
+    <LinearGradient colors={["#183629", theme.surface]} style={styles.signal}>
+      <View style={styles.signalTop}><View style={styles.signalDot} /><Text style={styles.live}>{status === "active" ? "GPS · SYGNAŁ NA ŻYWO" : "WYMAGANA LOKALIZACJA"}</Text></View>
+      {guidance ? <><Text style={styles.instruction}>{guidance.instruction}</Text><Text style={styles.detail}>{guidance.distanceKm !== null ? guidance.distanceKm.toFixed(1) + " km · " : ""}potencjał {guidance.target.profitScore}/100</Text><Text style={styles.reason}>{guidance.target.regimeDescription || zones?.transitionNarrative || "Aktualny popyt i dojazd zostały uwzględnione."}</Text></> : <Text style={styles.instruction}>{error || "Analizuję najkorzystniejszą strefę…"}</Text>}
+    </LinearGradient>
+    {status !== "active" ? <Pressable accessibilityRole="button" onPress={() => void request()} disabled={status === "requesting"} style={styles.primaryButton}>{status === "requesting" ? <ActivityIndicator color={theme.background} /> : <><Ionicons name="locate" size={20} color={theme.background} /><Text style={styles.primaryText}>Użyj mojej lokalizacji</Text></>}</Pressable> : null}
+    <Pressable accessibilityRole="button" onPress={() => router.push("/map" as never)} style={styles.mapButton}><Ionicons name="map-outline" size={20} color={theme.primary} /><Text style={styles.mapText}>Pokaż trasę na mapie</Text></Pressable>
+    <View style={styles.safety}><Ionicons name="volume-high-outline" size={20} color={theme.primary} /><View style={{ flex: 1 }}><Text style={styles.safetyTitle}>Tryb bez dotykania</Text><Text style={styles.safetyText}>Włącz głos lub lokalne powiadomienia w ustawieniach alertów. Nowy kierunek zostanie podany bez obsługi ekranu.</Text></View></View>
+  </View></SafeAreaView>;
 }
-function Metric({label,value,icon}:{label:string;value:string;icon:keyof typeof Ionicons.glyphMap}){return <View style={s.metric}><Ionicons name={icon} size={19} color={theme.primary}/><Text style={s.metricValue}>{value}</Text><Text style={s.metricLabel}>{label}</Text></View>}
-function Shortcut({icon,label,onPress}:{icon:keyof typeof Ionicons.glyphMap;label:string;onPress:()=>void}){return <Pressable onPress={onPress} style={s.shortcut}><Ionicons name={icon} size={20} color={theme.primary}/><Text style={s.shortcutText}>{label}</Text></Pressable>}
-const s=StyleSheet.create({screen:{flex:1,backgroundColor:theme.background},content:{padding:18,paddingBottom:34},header:{flexDirection:"row",justifyContent:"space-between",alignItems:"flex-start"},eyebrow:{color:theme.primary,fontSize:10,fontWeight:"900",letterSpacing:1.3},title:{color:theme.text,fontSize:30,fontWeight:"900",marginTop:4},subtitle:{color:theme.muted,fontSize:11,marginTop:4},refresh:{width:40,height:40,borderRadius:13,alignItems:"center",justifyContent:"center",backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border},metrics:{flexDirection:"row",gap:8,marginTop:16},metric:{flex:1,minHeight:91,padding:11,borderRadius:15,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,justifyContent:"space-between"},metricValue:{color:theme.text,fontSize:18,fontWeight:"900"},metricLabel:{color:theme.muted,fontSize:9,fontWeight:"700"},pulse:{height:250,borderRadius:20,overflow:"hidden",marginTop:12,borderWidth:1,borderColor:theme.border},advice:{padding:15,borderRadius:18,marginTop:12,borderWidth:1,borderColor:"rgba(46,230,166,.24)"},adviceLabel:{color:theme.primary,fontSize:9,fontWeight:"900",letterSpacing:1},adviceText:{color:theme.text,fontSize:14,fontWeight:"800",marginTop:5},action:{alignSelf:"flex-start",marginTop:10,paddingHorizontal:12,paddingVertical:7,borderRadius:10,backgroundColor:theme.primary},actionText:{color:theme.background,fontSize:9,fontWeight:"900"},section:{color:theme.text,fontSize:17,fontWeight:"900",marginTop:20,marginBottom:8},card:{backgroundColor:theme.surface,borderRadius:17,borderWidth:1,borderColor:theme.border,overflow:"hidden"},row:{minHeight:60,flexDirection:"row",alignItems:"center",gap:10,paddingHorizontal:12,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:theme.border},rank:{width:20,color:theme.primary,fontSize:11,fontWeight:"900"},rowTitle:{color:theme.text,fontSize:11,fontWeight:"800"},rowMeta:{color:theme.muted,fontSize:8.5,marginTop:2},score:{color:theme.primary,fontSize:18,fontWeight:"900"},empty:{color:theme.muted,fontSize:10,padding:18,textAlign:"center"},shortcuts:{flexDirection:"row",gap:8,marginTop:14},shortcut:{flex:1,minHeight:62,alignItems:"center",justifyContent:"center",gap:4,borderRadius:14,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border},shortcutText:{color:theme.text,fontSize:9,fontWeight:"800"}});
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.background }, content: { flex: 1, padding: 20, justifyContent: "center" }, header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }, eyebrow: { color: theme.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1.3 }, title: { color: theme.text, fontSize: 31, fontWeight: "900", marginTop: 5 }, subtitle: { color: theme.muted, fontSize: 11, lineHeight: 16, marginTop: 6, marginBottom: 20 }, refresh: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border },
+  signal: { minHeight: 260, padding: 22, borderRadius: 22, borderWidth: 1, borderColor: "rgba(46,230,166,.32)", justifyContent: "center" }, signalTop: { flexDirection: "row", alignItems: "center", gap: 8 }, signalDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: theme.primary }, live: { color: theme.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1 }, instruction: { color: theme.text, fontSize: 25, lineHeight: 32, fontWeight: "900", marginTop: 18 }, detail: { color: theme.primarySoft, fontSize: 13, fontWeight: "800", marginTop: 10 }, reason: { color: theme.muted, fontSize: 10, lineHeight: 15, marginTop: 12 },
+  primaryButton: { minHeight: 54, marginTop: 13, borderRadius: 15, backgroundColor: theme.primary, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center" }, primaryText: { color: theme.background, fontSize: 12, fontWeight: "900" }, mapButton: { minHeight: 52, marginTop: 10, borderRadius: 15, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center" }, mapText: { color: theme.primary, fontSize: 11, fontWeight: "900" }, safety: { flexDirection: "row", gap: 11, padding: 14, marginTop: 14, borderRadius: 16, backgroundColor: theme.surface }, safetyTitle: { color: theme.text, fontSize: 11, fontWeight: "900" }, safetyText: { color: theme.muted, fontSize: 9, lineHeight: 13, marginTop: 3 },
+});

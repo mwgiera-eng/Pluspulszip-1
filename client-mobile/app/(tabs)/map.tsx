@@ -17,13 +17,13 @@ export default function MapScreen() {
       <View style={styles.header}>
         <View style={styles.liveDot} />
         <View style={styles.titleGroup}>
-          <Text style={styles.title}>Live Demand Map</Text>
-          <Text style={styles.meta}>{status === "active" ? "GPS active" : "Kraków grid"} · CARTO / OpenStreetMap</Text>
+          <Text style={styles.title}>Mapa popytu i tras</Text>
+          <Text style={styles.meta}>{status === "active" ? "GPS aktywny" : "Siatka Krakowa"} · CARTO / OpenStreetMap</Text>
         </View>
-        {status !== "active" ? <Pressable accessibilityRole="button" accessibilityLabel="Use my location on the demand map" onPress={() => void request()} disabled={status === "requesting"} style={styles.refresh}>
+        {status !== "active" ? <Pressable accessibilityRole="button" accessibilityLabel="Użyj mojej lokalizacji na mapie" onPress={() => void request()} disabled={status === "requesting"} style={styles.refresh}>
           {status === "requesting" ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="locate-outline" size={18} color={status === "denied" ? theme.warning : theme.primary} />}
         </Pressable> : null}
-        <Pressable accessibilityRole="button" accessibilityLabel="Refresh live map" onPress={refresh} style={styles.refresh}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Odśwież mapę" onPress={refresh} style={styles.refresh}>
           {loading ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="refresh" size={18} color={theme.primary} />}
         </Pressable>
       </View>

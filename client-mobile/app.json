@@ -2,21 +2,22 @@
   "expo": {
     "name": "PlusPuls",
     "slug": "pluspuls",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "scheme": "pluspuls",
     "userInterfaceStyle": "dark",
     "icon": "./assets/icon.png",
     "android": {
       "package": "pl.pluspuls.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0D14"
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
       ],
       "blockedPermissions": [
         "android.permission.ACCESS_BACKGROUND_LOCATION"
@@ -33,6 +34,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "PlusPuls uses your location only after you tap the location control, to center the Kraków demand map and calculate nearby routes."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#2EE6A6",
+          "defaultChannel": "driver-guidance"
         }
       ],
       [

@@ -17,7 +17,7 @@ export default function SettingsScreen() {
 function SettingsContent() {
   const api = productionApiUrl();
   const { user, loading, refresh, logout } = useAuth();
-  const version = Constants.expoConfig?.version || "1.1.0";
+  const version = Constants.expoConfig?.version || "1.2.0";
   const [showDelete, setShowDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");

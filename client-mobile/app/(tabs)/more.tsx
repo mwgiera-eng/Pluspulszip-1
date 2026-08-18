@@ -6,6 +6,7 @@ import { theme } from "@/lib/theme";
 import { useAuth } from "@/components/AuthProvider";
 
 const ITEMS = [
+  { icon: "people-outline" as const, title: "Flota i wzorce", detail: "Anonimowe profile, liderzy i PLN/km", route: "/fleet" },
   { icon: "pulse-outline" as const, title: "Sygnały", detail: "Lotnisko, wydarzenia, hot zones", route: "/signals" },
   { icon: "notifications-outline" as const, title: "Powiadomienia", detail: "Typy alertów i częstotliwość", route: "/notifications" },
   { icon: "settings-outline" as const, title: "Ustawienia", detail: "Prywatność, dane i zachowanie aplikacji", route: "/settings" },
@@ -35,7 +36,7 @@ export default function MoreScreen() {
           <View style={styles.statusIcon}><Ionicons name="shield-checkmark-outline" size={23} color={theme.primary} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.statusTitle}>Live OpenStreetMap</Text>
-            <Text style={styles.statusText}>Mapa CARTO/OSM pokazuje heatmapę, ruch drogowy i sygnały PlusPuls bez klucza Google Maps.</Text>
+            <Text style={styles.statusText}>Mapa CARTO/OSM pokazuje heatmapę, animowany ruch i geometrię najlepszych tras bez klucza Google Maps.</Text>
           </View>
         </View>
 
@@ -54,7 +55,7 @@ export default function MoreScreen() {
 
         <View style={styles.note}>
           <Ionicons name="information-circle-outline" size={18} color={theme.blue} />
-          <Text style={styles.noteText}>Panel administratora i import CSV pozostają narzędziami webowymi. Funkcje kierowcy mają natywne odpowiedniki w Androidzie.</Text>
+          <Text style={styles.noteText}>Import CSV działa natywnie i czyści dane na telefonie. Panel administratora pozostaje narzędziem webowym.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

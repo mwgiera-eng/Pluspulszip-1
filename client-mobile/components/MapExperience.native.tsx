@@ -2,14 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
 import {
-  fetchMapData,
   fetchRoadTraffic,
   fetchRouteGeometries,
   fetchZoneProfitHeat,
-  type MapPoi,
   type RoadSegment,
   type RouteGeometryData,
-  type ZoneProfitHeatData,
 } from "@/lib/api";
 import type { DevicePosition, HeatCell } from "@/lib/types";
 import { LIVE_DEMAND_MAP_HTML } from "./live-map-html";
@@ -48,23 +45,6 @@ function cleanRoads(roads: RoadSegment[]) {
   });
 }
 
-function cleanZones(zones: ZoneProfitHeatData[]) {
-  return zones.slice(0, 100).flatMap((zone) => {
-    const lat = validNumber(zone.lat, 49, 51);
-    const lng = validNumber(zone.lng, 18, 22);
-    if (lat === null || lng === null) return [];
-    return [{ zoneName: text(zone.zoneName), lat, lng, radius: validNumber(zone.radius, 20, 5000) ?? 450, profitScore: validNumber(zone.profitScore, 0, 100) ?? 0 }];
-  });
-}
-
-function cleanPois(pois: MapPoi[]) {
-  return pois.slice(0, 180).flatMap((poi) => {
-    const lat = validNumber(poi.lat, 49, 51);
-    const lng = validNumber(poi.lng, 18, 22);
-    return lat === null || lng === null ? [] : [{ name: text(poi.name), category: text(poi.category || poi.type), lat, lng }];
-  });
-}
-
 function cleanRoutes(routes: RouteGeometryData[]) {
   return routes.slice(0, 12).flatMap((route) => {
     const geometry = cleanGeometry(route.geometry, 240);
@@ -77,8 +57,6 @@ export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 
   const webView = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
   const [roads, setRoads] = useState<RoadSegment[]>([]);
-  const [zones, setZones] = useState<ZoneProfitHeatData[]>([]);
-  const [pois, setPois] = useState<MapPoi[]>([]);
   const [routes, setRoutes] = useState<RouteGeometryData[]>([]);
   const [baseLevel, setBaseLevel] = useState(0);
   const [narrative, setNarrative] = useState("");
@@ -88,13 +66,12 @@ export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const [traffic, mapData, routeData] = await Promise.allSettled([
-        fetchRoadTraffic(controller.signal), fetchMapData(controller.signal), fetchRouteGeometries(position, controller.signal),
+      const [traffic, routeData] = await Promise.allSettled([
+        fetchRoadTraffic(controller.signal), fetchRouteGeometries(position, controller.signal),
       ]);
       if (traffic.status === "fulfilled") { setRoads(traffic.value.roads); setBaseLevel(traffic.value.baseLevel); }
-      if (mapData.status === "fulfilled") setPois(mapData.value.pois ?? []);
       if (routeData.status === "fulfilled") setRoutes(routeData.value);
-      setSourceError(traffic.status === "rejected" ? "Road signals temporarily unavailable" : null);
+      setSourceError(traffic.status === "rejected" ? "Sygnały drogowe są chwilowo niedostępne" : null);
     };
     void load();
     const interval = setInterval(() => void load(), 30_000);
@@ -104,9 +81,9 @@ export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 
   useEffect(() => {
     const controller = new AbortController();
     void fetchZoneProfitHeat(hoursAhead, minutesAhead, controller.signal)
-      .then((data) => { setZones(data.zones); setNarrative(data.transitionNarrative); setTargetTime(data.targetTime); })
+      .then((data) => { setNarrative(data.transitionNarrative); setTargetTime(data.targetTime); })
       .catch((reason: unknown) => {
-        if (!(reason instanceof Error && reason.name === "AbortError")) setSourceError("Forecast temporarily unavailable");
+        if (!(reason instanceof Error && reason.name === "AbortError")) setSourceError("Prognoza jest chwilowo niedostępna");
       });
     return () => controller.abort();
   }, [hoursAhead, minutesAhead]);
@@ -117,11 +94,11 @@ export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 
       const lng = validNumber(cell.lng, 18, 22);
       return lat === null || lng === null ? [] : [{ id: text(cell.id), lat, lng, radius: validNumber(cell.radius, 20, 5000) ?? 300, score: validNumber(cell.score, 0, 100) ?? 0 }];
     }),
-    roads: cleanRoads(roads), zones: cleanZones(zones), pois: cleanPois(pois), routes: cleanRoutes(routes),
+    roads: cleanRoads(roads), routes: cleanRoutes(routes),
     position: position ? { lat: validNumber(position.lat, 49, 51), lng: validNumber(position.lng, 18, 22), accuracy: validNumber(position.accuracy, 1, 5000) ?? 100 } : null,
     baseLevel: validNumber(baseLevel, 0, 1) ?? 0,
     narrative: text(narrative), targetTime: text(targetTime), error: text(heatError || sourceError),
-  }), [baseLevel, cells, heatError, narrative, pois, position, roads, routes, sourceError, targetTime, zones]);
+  }), [baseLevel, cells, heatError, narrative, position, roads, routes, sourceError, targetTime]);
 
   const sendPayload = useCallback(() => {
     if (ready) webView.current?.postMessage(JSON.stringify({ type: "map-data", payload }));

@@ -108,6 +108,18 @@ export type EarningsStats = {
   topZones: { name: string; amount: number }[];
 };
 
+export type EarningsUploadResult = {
+  processed: number;
+  failed: number;
+  errors?: string[];
+};
+
+export type Fleet = { id: string; name: string; ownerUserId: string; createdAt: string };
+export type FleetProfile = { id: string; anonymousDriverId: string; displayName: string; isLeaderDriver: boolean; avgEarningsPerKm: number; percentileRank: number; totalTripsAnalyzed: number };
+export type FleetPattern = { zoneGeohash: string; timeSlot: number; dayOfWeek: number; avgEarningsPerKm: number; tripCount: number; leaderPercentage: number };
+export type FleetGuidance = { type: "PATTERN_SUGGESTION" | "LEADER_ZONE_DETECTED" | "INEFFICIENT_ROUTE_ALERT"; priority: "low" | "medium" | "high"; title: string; body: string; zoneGeohash?: string; estimatedGainPct?: number };
+export type FleetTrip = { tripId: string; pickupGeohash: string; dropoffGeohash: string; startEpoch: number; netIncome: number; distanceKm: number; timeSlot: number; dayOfWeek: number };
+
 export type NotificationPrefs = {
   airportInfo: boolean;
   events: boolean;
@@ -284,6 +296,43 @@ export function fetchDayPlan(tomorrow: boolean, signal?: AbortSignal) {
 
 export function fetchEarningsStats(signal?: AbortSignal) {
   return apiFetch<EarningsStats>("/api/earnings/stats", { signal });
+}
+
+export function uploadSanitizedEarningsCsv(uri: string) {
+  const form = new FormData();
+  form.append("file", {
+    uri,
+    name: "pluspuls-sanitized.csv",
+    type: "text/csv",
+  } as unknown as Blob);
+  return apiFetch<EarningsUploadResult>("/api/earnings/upload", {
+    method: "POST",
+    body: form,
+  });
+}
+
+export function fetchMyFleet(signal?: AbortSignal) {
+  return apiFetch<Fleet | null>("/api/fleet/me", { signal });
+}
+
+export function createFleet(name: string) {
+  return apiFetch<Fleet>("/api/fleet", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() }) });
+}
+
+export function uploadFleetTrips(input: { fleetId: string; anonymousDriverId: string; displayName: string; trips: FleetTrip[]; payloadDigest: string }) {
+  return apiFetch<{ profileId: string; processed: number; rejected: number }>("/api/fleet/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+}
+
+export function extractFleetPatterns(fleetId: string) {
+  return apiFetch<{ patterns: FleetPattern[]; count: number }>(`/api/fleet/${encodeURIComponent(fleetId)}/patterns/extract`, { method: "POST", headers: { "Content-Type": "application/json" } });
+}
+
+export function fetchFleetLeaderboard(fleetId: string, signal?: AbortSignal) {
+  return apiFetch<FleetProfile[]>(`/api/fleet/${encodeURIComponent(fleetId)}/leaderboard`, { signal });
+}
+
+export function fetchFleetGuidance(fleetId: string, profileId: string, signal?: AbortSignal) {
+  return apiFetch<FleetGuidance[]>(`/api/fleet/${encodeURIComponent(fleetId)}/profile/${encodeURIComponent(profileId)}/guidance`, { signal });
 }
 
 export function fetchNotificationPreferences(signal?: AbortSignal) {

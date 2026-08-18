@@ -4,7 +4,10 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, Vie
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHeader } from "@/components/PageHeader";
 import { FeatureGate } from "@/components/FeatureGate";
-import { fetchNotificationPreferences, saveNotificationPreferences, type NotificationPrefs } from "@/lib/api";
+import { useDeviceLocation } from "@/hooks/use-device-location";
+import { fetchNotificationPreferences, fetchZoneProfitHeat, saveNotificationPreferences, type NotificationPrefs } from "@/lib/api";
+import { chooseDriverGuidance } from "@/lib/driver-guidance";
+import { ensureNotificationPermission, notificationPermissionStatus, presentGuidance, readNativeGuidanceSettings, writeNativeGuidanceSettings, type NativeGuidanceSettings } from "@/lib/native-guidance";
 import { theme } from "@/lib/theme";
 
 const DEFAULT_PREFS: NotificationPrefs = {
@@ -41,6 +44,9 @@ function NotificationsContent() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [native, setNative] = useState<NativeGuidanceSettings>({ notificationsEnabled: false, voiceEnabled: false });
+  const [permission, setPermission] = useState<string>("undetermined");
+  const { position } = useDeviceLocation();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -49,6 +55,12 @@ function NotificationsContent() {
       .catch(() => setMessage("Używane są ustawienia lokalne. Synchronizacja może wymagać zalogowanej sesji."))
       .finally(() => setLoading(false));
     return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    void Promise.all([readNativeGuidanceSettings(), notificationPermissionStatus()]).then(([settings, status]) => {
+      setNative(settings); setPermission(status);
+    });
   }, []);
 
   const toggle = (key: keyof Omit<NotificationPrefs, "frequency">) => {
@@ -60,15 +72,35 @@ function NotificationsContent() {
     setSaving(true);
     setMessage(null);
     try {
+      if (native.notificationsEnabled) {
+        const granted = await ensureNotificationPermission();
+        if (!granted) throw new Error("Android nie przyznał zgody na powiadomienia.");
+        setPermission("granted");
+      }
+      writeNativeGuidanceSettings(native);
       const next = await saveNotificationPreferences(prefs);
       setPrefs(next);
       setDirty(false);
-      setMessage("Preferencje zapisane na serwerze PlusPuls.");
+      setMessage("Preferencje i tryb bez dotykania zostały zapisane.");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "Nie udało się zapisać preferencji.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const testNative = async () => {
+    setSaving(true); setMessage(null);
+    try {
+      if (native.notificationsEnabled && !(await ensureNotificationPermission())) throw new Error("Android nie przyznał zgody na powiadomienia.");
+      writeNativeGuidanceSettings(native);
+      const zones = await fetchZoneProfitHeat(0);
+      const guidance = chooseDriverGuidance(zones.zones, position);
+      if (!guidance) throw new Error("Brak aktualnej rekomendacji do odtworzenia.");
+      await presentGuidance(guidance.instruction, native);
+      setMessage("Test wysłany. Sprawdź dźwięk i panel powiadomień Androida.");
+    } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Test nie powiódł się."); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -79,9 +111,14 @@ function NotificationsContent() {
         <View style={styles.transport}>
           <Ionicons name="notifications-outline" size={21} color={theme.primary} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.transportTitle}>Preferencje alertów</Text>
-            <Text style={styles.transportText}>Ustawienia są zgodne z wersją webową. Natywne push delivery wymaga osobnej konfiguracji Expo Notifications i poświadczeń push.</Text>
+            <Text style={styles.transportTitle}>Tryb bez dotykania</Text>
+            <Text style={styles.transportText}>Lokalne alerty i polski głos działają w tej aplikacji. Zdalne alerty przy zamkniętej aplikacji będą wymagały poświadczeń FCM.</Text>
           </View>
+        </View>
+
+        <View style={styles.nativeCard}>
+          <NativeToggle icon="notifications" label="Powiadomienia Android" detail={permission === "granted" ? "Zgoda systemowa aktywna" : "Android poprosi o zgodę przy zapisie"} value={native.notificationsEnabled} onChange={(value) => { setNative((current) => ({ ...current, notificationsEnabled: value })); setDirty(true); }} />
+          <NativeToggle icon="volume-high" label="Asystent głosowy" detail="Krótka wskazówka po polsku po zmianie celu" value={native.voiceEnabled} onChange={(value) => { setNative((current) => ({ ...current, voiceEnabled: value })); setDirty(true); }} />
         </View>
 
         {loading ? <ActivityIndicator color={theme.primary} style={{ marginVertical: 20 }} /> : null}
@@ -122,6 +159,8 @@ function NotificationsContent() {
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
+        <Pressable onPress={() => void testNative()} disabled={saving || (!native.notificationsEnabled && !native.voiceEnabled)} style={[styles.test, (saving || (!native.notificationsEnabled && !native.voiceEnabled)) && styles.saveDisabled]}><Ionicons name="play" size={17} color={theme.primary} /><Text style={styles.testText}>Testuj teraz</Text></Pressable>
+
         <Pressable onPress={() => void save()} disabled={!dirty || saving} style={[styles.save, (!dirty || saving) && styles.saveDisabled]}>
           {saving ? <ActivityIndicator color={theme.background} /> : <Text style={styles.saveText}>Zapisz preferencje</Text>}
         </Pressable>
@@ -130,12 +169,18 @@ function NotificationsContent() {
   );
 }
 
+function NativeToggle({ icon, label, detail, value, onChange }: { icon: keyof typeof Ionicons.glyphMap; label: string; detail: string; value: boolean; onChange: (value: boolean) => void }) {
+  return <View style={styles.nativeRow}><View style={styles.icon}><Ionicons name={icon} size={20} color={theme.primary} /></View><View style={{ flex: 1 }}><Text style={styles.rowTitle}>{label}</Text><Text style={styles.rowDetail}>{detail}</Text></View><Switch value={value} onValueChange={onChange} trackColor={{ false: theme.surfaceRaised, true: "rgba(46,230,166,0.42)" }} thumbColor={value ? theme.primary : theme.muted} /></View>;
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.background },
   content: { padding: 18, paddingBottom: 38 },
   transport: { flexDirection: "row", gap: 10, padding: 14, borderRadius: 16, backgroundColor: "rgba(46,230,166,0.07)", borderWidth: 1, borderColor: "rgba(46,230,166,0.18)" },
   transportTitle: { color: theme.text, fontSize: 12, fontWeight: "900" },
   transportText: { color: theme.muted, fontSize: 9.5, lineHeight: 14, marginTop: 3 },
+  nativeCard: { marginTop: 12, backgroundColor: theme.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.border, overflow: "hidden" },
+  nativeRow: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
   card: { marginTop: 14, backgroundColor: theme.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.border, overflow: "hidden" },
   row: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
   icon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: theme.surfaceRaised },
@@ -151,4 +196,6 @@ const styles = StyleSheet.create({
   save: { minHeight: 50, marginTop: 15, borderRadius: 14, backgroundColor: theme.primary, alignItems: "center", justifyContent: "center" },
   saveDisabled: { opacity: 0.42 },
   saveText: { color: theme.background, fontSize: 12, fontWeight: "900" },
+  test: { minHeight: 48, marginTop: 14, borderRadius: 14, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.primary, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7 },
+  testText: { color: theme.primary, fontSize: 11, fontWeight: "900" },
 });
