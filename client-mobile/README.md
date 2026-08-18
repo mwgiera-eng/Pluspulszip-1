@@ -52,10 +52,12 @@ the Android keystore, then record a protected backup of that credential.
 
 ```bash
 npm run build:preview
-npm run build:apk
 ```
 
-The preview profile uses EAS internal distribution and produces an installable APK.
+The preview profile explicitly disables the development client, uses EAS internal
+distribution and produces a standalone installable APK that does not need Metro
+or QR scanning. Uninstall a locally signed debug build before installing it if
+Android reports a signing conflict.
 Copy the HTTPS build URL into `EXPO_PUBLIC_ANDROID_APK_URL`, set the release
 version and optional SHA-256, then redeploy the web client.
 
@@ -86,6 +88,7 @@ not need cross-origin session cookies or a permissive backend CORS policy.
 npm ci --ignore-scripts
 npm run typecheck
 npx expo-doctor
+npm run export:android
 npm run export:web
 ```
 

@@ -4,19 +4,13 @@
     "appVersionSource": "remote"
   },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "channel": "development",
-      "env": {
-        "EXPO_PUBLIC_RELEASE_CHANNEL": "development",
-        "EXPO_PUBLIC_ALLOW_EXTERNAL_SUBSCRIPTIONS": "true"
-      }
-    },
     "preview": {
+      "node": "22.13.1",
+      "developmentClient": false,
       "distribution": "internal",
       "channel": "preview",
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://pluspulszip-1.onrender.com",
         "EXPO_PUBLIC_RELEASE_CHANNEL": "preview",
         "EXPO_PUBLIC_ALLOW_EXTERNAL_SUBSCRIPTIONS": "true"
       },
@@ -25,10 +19,13 @@
       }
     },
     "production": {
+      "node": "22.13.1",
+      "developmentClient": false,
       "distribution": "store",
       "channel": "production",
       "autoIncrement": true,
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://pluspulszip-1.onrender.com",
         "EXPO_PUBLIC_RELEASE_CHANNEL": "production",
         "EXPO_PUBLIC_ALLOW_EXTERNAL_SUBSCRIPTIONS": "false"
       },

@@ -1,10 +1,12 @@
-const DEFAULT_API_URL = "https://pluspuls-app.onrender.com";
+const DEFAULT_API_URL = "https://pluspulszip-1.onrender.com";
+const TRUSTED_API_ORIGINS = new Set([DEFAULT_API_URL]);
 
 function upstreamOrigin(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim() || DEFAULT_API_URL;
   const url = new URL(configured);
   const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
   if (url.protocol !== "https:" && !local) throw new Error("Invalid API origin");
+  if (!local && !TRUSTED_API_ORIGINS.has(url.origin)) throw new Error("Untrusted API origin");
   return url.origin;
 }
 

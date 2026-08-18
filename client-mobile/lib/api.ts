@@ -1,7 +1,8 @@
 import { Platform } from "react-native";
 import type { HeatResponse } from "./types";
 
-const DEFAULT_API_URL = "https://pluspuls-app.onrender.com";
+const DEFAULT_API_URL = "https://pluspulszip-1.onrender.com";
+const TRUSTED_API_ORIGINS = new Set([DEFAULT_API_URL]);
 
 export type RoadSegment = {
   id: number;
@@ -168,6 +169,9 @@ export function productionApiUrl(): string {
   const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
   if (url.protocol !== "https:" && !local) {
     throw new Error("PlusPuls API must use HTTPS");
+  }
+  if (!local && !TRUSTED_API_ORIGINS.has(url.origin)) {
+    throw new Error("PlusPuls API origin is not trusted");
   }
   return url.origin;
 }

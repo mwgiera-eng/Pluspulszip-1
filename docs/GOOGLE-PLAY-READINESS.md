@@ -61,8 +61,9 @@ Official references:
 ## GitHub delivery controls
 
 `.github/workflows/mobile-ci.yml` installs from the lockfile, runs TypeScript,
-Expo Doctor and the web export. Pull requests also run GitHub's dependency
-review. Enable branch protection so these checks are required before merging.
+Expo Doctor, and both Android and web exports. Pull requests also run GitHub's
+dependency review. Enable branch protection so these checks are required before
+merging.
 
 Official references:
 

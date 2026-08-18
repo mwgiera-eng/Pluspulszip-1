@@ -7,9 +7,9 @@
     "start": "expo start",
     "android": "expo start --android",
     "web": "expo start --web",
+    "export:android": "expo export --platform android",
     "export:web": "expo export --platform web",
     "deploy:web": "eas deploy --prod",
-    "build:development": "npx eas-cli@21.8.0 build --platform android --profile development",
     "build:apk": "npx eas-cli@21.8.0 build --platform android --profile preview",
     "build:preview": "npx eas-cli@21.8.0 build --platform android --profile preview",
     "build:production": "npx eas-cli@21.8.0 build --platform android --profile production",
@@ -41,6 +41,6 @@
     "typescript": "~6.0.3"
   },
   "engines": {
-    "node": ">=20.19.0 <23"
+    "node": ">=22.13.0 <23"
   }
 }
