@@ -8,7 +8,6 @@
       "node": "22.13.1",
       "developmentClient": false,
       "distribution": "internal",
-      "channel": "preview",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://pluspulszip-1.onrender.com",
         "EXPO_PUBLIC_RELEASE_CHANNEL": "preview",
@@ -22,7 +21,6 @@
       "node": "22.13.1",
       "developmentClient": false,
       "distribution": "store",
-      "channel": "production",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://pluspulszip-1.onrender.com",
