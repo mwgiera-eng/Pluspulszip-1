@@ -2,12 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FeatureGate } from "@/components/FeatureGate";
 import { fetchDayPlan, type DayPlanResponse, type HourBlock } from "@/lib/api";
 import { theme } from "@/lib/theme";
 
 const demandColor=(level:HourBlock["demandLevel"])=>level==="surge"||level==="high"?theme.danger:level==="medium"?theme.warning:theme.muted;
 
 export default function PlannerScreen(){
+ return <FeatureGate premium><PlannerContent/></FeatureGate>;
+}
+
+function PlannerContent(){
  const [tomorrow,setTomorrow]=useState(false),[plan,setPlan]=useState<DayPlanResponse|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null),[expanded,setExpanded]=useState<number|null>(null);
  useEffect(()=>{const controller=new AbortController();setLoading(true);setError(null);fetchDayPlan(tomorrow,controller.signal).then(setPlan).catch((reason:unknown)=>{if(reason instanceof Error&&reason.name==="AbortError")return;setError(reason instanceof Error?reason.message:"Plan dnia jest niedostępny");}).finally(()=>setLoading(false));return()=>controller.abort();},[tomorrow]);
  return <SafeAreaView style={styles.screen}><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

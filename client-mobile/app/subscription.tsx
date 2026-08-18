@@ -3,6 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHeader } from "@/components/PageHeader";
+import { FeatureGate } from "@/components/FeatureGate";
+import { useAuth } from "@/components/AuthProvider";
 import { productionApiUrl } from "@/lib/api";
 import { theme } from "@/lib/theme";
 
@@ -14,6 +16,13 @@ const FEATURES = [
 ];
 
 export default function SubscriptionScreen() {
+  return <FeatureGate><SubscriptionContent /></FeatureGate>;
+}
+
+function SubscriptionContent() {
+  const { user, refresh } = useAuth();
+  const status = user?.subscriptionInfo;
+  const allowExternal = process.env.EXPO_PUBLIC_ALLOW_EXTERNAL_SUBSCRIPTIONS === "true";
   const openWeb = () => void Linking.openURL(`${productionApiUrl()}/subscription`);
 
   return (
@@ -23,9 +32,9 @@ export default function SubscriptionScreen() {
 
         <LinearGradient colors={["#1B3A30", theme.surface]} style={styles.hero}>
           <View style={styles.crown}><Ionicons name="diamond-outline" size={30} color={theme.primary} /></View>
-          <Text style={styles.plan}>Premium</Text>
-          <View style={styles.priceRow}><Text style={styles.price}>9.99</Text><Text style={styles.currency}> PLN / miesiąc</Text></View>
-          <Text style={styles.copy}>Pełny zestaw narzędzi dla kierowcy dostępny w tym samym koncie PlusPuls.</Text>
+          <Text style={styles.plan}>{status?.status === "trial" ? "Okres próbny" : status?.status === "active" ? "Premium aktywny" : "PlusPuls Premium"}</Text>
+          <View style={styles.priceRow}><Text style={styles.price}>{status?.price?.toFixed(2) || "9.99"}</Text><Text style={styles.currency}> {status?.currency || "PLN"} / miesiąc</Text></View>
+          <Text style={styles.copy}>{status?.isPremium ? `Dostęp aktywny${status.status === "trial" ? ` · ${status.trialDaysLeft ?? 0} dni pozostało` : ""}.` : "Plan nie jest obecnie aktywny na tym koncie."}</Text>
         </LinearGradient>
 
         <View style={styles.card}>
@@ -37,14 +46,12 @@ export default function SubscriptionScreen() {
           ))}
         </View>
 
-        <Pressable onPress={openWeb} style={styles.button}>
-          <Text style={styles.buttonText}>Otwórz zarządzanie planem</Text>
-          <Ionicons name="open-outline" size={18} color={theme.background} />
-        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => void refresh()} style={styles.button}><Text style={styles.buttonText}>Odśwież status planu</Text><Ionicons name="refresh" size={18} color={theme.background} /></Pressable>
+        {allowExternal ? <Pressable accessibilityRole="link" onPress={openWeb} style={styles.webButton}><Text style={styles.webButtonText}>Zarządzanie planem — dystrybucja wewnętrzna</Text><Ionicons name="open-outline" size={17} color={theme.primary} /></Pressable> : null}
 
         <View style={styles.note}>
           <Ionicons name="information-circle-outline" size={18} color={theme.blue} />
-          <Text style={styles.noteText}>Płatności i zmiany planu są obsługiwane przez istniejący bezpieczny przepływ webowy. Aplikacja Android nie przechowuje danych płatniczych.</Text>
+          <Text style={styles.noteText}>{allowExternal ? "Ten link jest dostępny wyłącznie w wewnętrznym APK. Aplikacja nie przechowuje danych płatniczych." : "Zakupy cyfrowe w wydaniu Google Play będą korzystać z Google Play Billing. Do czasu integracji wydanie sklepowe pokazuje tylko status istniejącego planu i nie kieruje do płatności zewnętrznej."}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -67,6 +74,7 @@ const styles = StyleSheet.create({
   featureText: { flex: 1, color: theme.text, fontSize: 11, fontWeight: "700" },
   button: { minHeight: 52, marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 15, backgroundColor: theme.primary },
   buttonText: { color: theme.background, fontSize: 12, fontWeight: "900" },
+  webButton: { minHeight: 48, marginTop: 9, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 14, borderWidth: 1, borderColor: theme.primary }, webButtonText: { color: theme.primary, fontSize: 10.5, fontWeight: "800" },
   note: { flexDirection: "row", gap: 8, padding: 13, borderRadius: 15, backgroundColor: "rgba(67,135,255,0.07)", marginTop: 14 },
   noteText: { flex: 1, color: theme.muted, fontSize: 10, lineHeight: 15 },
 });

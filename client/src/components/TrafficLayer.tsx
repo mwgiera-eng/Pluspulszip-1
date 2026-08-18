@@ -15,6 +15,11 @@ const IS_MOBILE =
   typeof window !== 'undefined' &&
   (window.matchMedia?.('(pointer: coarse)').matches ||
     (navigator.hardwareConcurrency ?? 8) <= 4);
+
+const KRAKOW_PULSE_ORIGIN: [number, number] = [50.0647, 19.945];
+const PERSPECTIVE_Y = 0.56;
+const RADIAL_WAVE_COUNT = 3;
+
 interface RoadTrafficResponse {
   roads: RoadSegment[];
   generatedAt: string;
@@ -22,31 +27,61 @@ interface RoadTrafficResponse {
   baseLevel: number;
 }
 
-// Dot color: green almost everywhere; orange/red reserved for the few genuinely congested roads.
-// Thresholds are percentile-based per data refresh (top ~5% red, next ~10% orange) with an
-// absolute floor so quiet hours stay fully green.
-function makeDotColor(intensities: number[]): (intensity: number) => string {
-  const sorted = intensities.slice().sort((a, b) => a - b);
-  const pct = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] ?? 1;
-  const redAt = Math.max(0.9, pct(0.95));
-  const orangeAt = Math.max(0.75, pct(0.85));
-  return (intensity: number) => {
-    if (intensity >= redAt) return '#FF5470';   // jammed — top of the distribution only
-    if (intensity >= orangeAt) return '#FFB547'; // heavy
-    return '#2EE6A6';                            // flowing (default green)
-  };
+interface TrafficVisual {
+  color: string;
+  dotAlpha: number;
+  radiusScale: number;
 }
+
+const TRAFFIC_COLORS = {
+  flow: '#2EE6A6',
+  slow: '#FFB547',
+  jam: '#FF5470',
+} as const;
+
+function getTrafficVisual(intensity: number): TrafficVisual {
+  if (intensity >= 0.7) return { color: TRAFFIC_COLORS.jam, dotAlpha: 0.98, radiusScale: 1.18 };
+  if (intensity >= 0.42) return { color: TRAFFIC_COLORS.slow, dotAlpha: 0.94, radiusScale: 1.08 };
+  return { color: TRAFFIC_COLORS.flow, dotAlpha: 0.9, radiusScale: 1 };
+}
+
+const HIGHWAY_PRIORITY: Record<string, number> = {
+  motorway: 5,
+  trunk: 4,
+  primary: 3,
+  secondary: 2,
+  tertiary: 1,
+};
 
 interface PreparedRoad {
   latlngs: L.LatLng[];
   bounds: L.LatLngBounds;
-  cumLen: number[]; // cumulative length in metres per vertex
+  cumLen: number[];
   totalLen: number;
   intensity: number;
-  color: string;
+  visual: TrafficVisual;
   dotCount: number;
-  speed: number; // metres per second along the line
-  phases: number[]; // 0..1 starting offsets
+  speed: number;
+  phases: number[];
+  priority: number;
+}
+
+interface RenderDot {
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+  wave: number;
+}
+
+function normalizeIntensity(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(1, value));
+}
+
+function trafficPriority(road: RoadSegment): number {
+  const highway = HIGHWAY_PRIORITY[road.highway] ?? 0;
+  return highway * 10 + normalizeIntensity(road.intensity) * 12;
 }
 
 export function TrafficLayer({ enabled }: { enabled: boolean }) {
@@ -56,11 +91,12 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
   const preparedRef = useRef<PreparedRoad[]>([]);
   const refreshVisibleRef = useRef<() => void>(() => {});
   const zoomRef = useRef<number>(map.getZoom());
+  const baseLevelRef = useRef(0);
 
   const { data } = useQuery<RoadTrafficResponse>({
     queryKey: ['/api/road-traffic'],
     queryFn: async () => {
-      const res = await fetch('/api/road-traffic', { credentials: 'include', cache: 'no-store' });
+      const res = await fetch('/api/road-traffic', { cache: 'no-store' });
       if (!res.ok) throw new Error('traffic unavailable');
       return res.json();
     },
@@ -69,68 +105,76 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     staleTime: 10000,
   });
 
-  // Prepare road geometry data whenever new traffic data arrives
   useEffect(() => {
     if (!data) return;
-    const dotColor = makeDotColor(data.roads.map((r) => r.intensity));
+    baseLevelRef.current = normalizeIntensity(data.baseLevel);
     preparedRef.current = data.roads
       .filter((r) => r.geometry.length >= 2)
-      .map((r) => {
+      .flatMap((r) => {
         const latlngs = r.geometry.map(([lat, lng]) => L.latLng(lat, lng));
         const cumLen: number[] = [0];
         for (let i = 1; i < latlngs.length; i++) {
           cumLen.push(cumLen[i - 1] + latlngs[i - 1].distanceTo(latlngs[i]));
         }
+
         const totalLen = cumLen[cumLen.length - 1];
-        // Fine-grained signals: many tiny beads, with density driven by traffic intensity.
-        const dotSpacing = IS_MOBILE ? 130 : 95;
-        const dotCount = Math.min(
-          IS_MOBILE ? 42 : 78,
-          Math.max(3, Math.round((totalLen / dotSpacing) * (0.42 + r.intensity * 0.85))),
-        );
-        // Heavier traffic moves slower; clear roads keep a steady flow.
-        const speed = 30 - 23 * r.intensity;
+        if (totalLen < 50) return [];
+
+        const intensity = normalizeIntensity(r.intensity);
+        const visual = getTrafficVisual(intensity);
+        const dotSpacing = IS_MOBILE ? 200 : 145;
+        const maxDots = IS_MOBILE ? 32 : 60;
+        const density = 0.68 + intensity * 0.82;
+        const dotCount = Math.min(maxDots, Math.max(2, Math.round((totalLen / dotSpacing) * density)));
+        const speed = 52 - 34 * intensity;
         const phases = Array.from({ length: dotCount }, (_, i) =>
           (i / dotCount + ((r.id * 0.618) % 1)) % 1,
         );
-        return {
+
+        return [{
           latlngs,
           bounds: L.latLngBounds(latlngs),
           cumLen,
           totalLen,
-          intensity: r.intensity,
-          color: dotColor(r.intensity),
+          intensity,
+          visual,
           dotCount,
           speed,
           phases,
-        };
-      });
+          priority: trafficPriority(r),
+        }];
+      })
+      .sort((a, b) => b.priority - a.priority);
+
     refreshVisibleRef.current();
   }, [data]);
 
-  // Canvas overlay + animation loop
   useEffect(() => {
     if (!enabled) return;
 
     const canvas = document.createElement('canvas');
     canvas.style.position = 'absolute';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
+    canvas.style.inset = '0';
     canvas.style.pointerEvents = 'none';
-    canvas.style.zIndex = '430'; // above heat polygons, below markers and controls
+    canvas.style.zIndex = '430';
     map.getContainer().appendChild(canvas);
     canvasRef.current = canvas;
 
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      canvas.remove();
+      canvasRef.current = null;
+      return;
+    }
 
-    // Cap backing-store resolution on mobile: 3x DPR canvases burn fill-rate
-    // for dots that are ~2px anyway.
-    const dpr = IS_MOBILE ? Math.min(devicePixelRatio, 1.5) : devicePixelRatio;
+    const dpr = IS_MOBILE
+      ? Math.min(window.devicePixelRatio || 1, 1.75)
+      : Math.min(window.devicePixelRatio || 1, 2.75);
 
     const resize = () => {
       const size = map.getSize();
-      canvas.width = size.x * dpr;
-      canvas.height = size.y * dpr;
+      canvas.width = Math.max(1, Math.floor(size.x * dpr));
+      canvas.height = Math.max(1, Math.floor(size.y * dpr));
       canvas.style.width = `${size.x}px`;
       canvas.style.height = `${size.y}px`;
     };
@@ -139,9 +183,15 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
 
     const pointAt = (road: PreparedRoad, distM: number): L.LatLng => {
       const { latlngs, cumLen } = road;
-      // binary search would be nicer; linear is fine for <100 vertices
-      let i = 1;
-      while (i < cumLen.length && cumLen[i] < distM) i++;
+      let lo = 1;
+      let hi = cumLen.length - 1;
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (cumLen[mid] < distM) lo = mid + 1;
+        else hi = mid;
+      }
+
+      const i = lo;
       if (i >= cumLen.length) return latlngs[latlngs.length - 1];
       const segLen = cumLen[i] - cumLen[i - 1] || 1;
       const t = (distM - cumLen[i - 1]) / segLen;
@@ -152,105 +202,163 @@ export function TrafficLayer({ enabled }: { enabled: boolean }) {
     };
 
     const start = performance.now();
-    const boundsPad = 40; // px margin for per-dot culling
-    const FRAME_INTERVAL = IS_MOBILE ? 1000 / 20 : 1000 / 30; // 20 fps on mobile, 30 desktop
+    const boundsPad = 34;
+    const FRAME_INTERVAL = IS_MOBILE ? 1000 / 24 : 1000 / 45;
     let lastFrame = 0;
 
-    // Viewport-level road culling, refreshed only when the map moves
     let visibleRoads: PreparedRoad[] = [];
     const refreshVisible = () => {
+      const zoom = map.getZoom();
+      zoomRef.current = zoom;
       const viewBounds = map.getBounds().pad(0.1);
-      visibleRoads = preparedRef.current.filter(
-        (r) => r.totalLen >= 50 && viewBounds.intersects(r.bounds),
-      );
+      const maxVisibleRoads = zoom < 11 ? 38 : zoom < 12.5 ? 62 : 100;
+      visibleRoads = preparedRef.current
+        .filter((r) => r.totalLen >= 50 && viewBounds.intersects(r.bounds))
+        .slice(0, IS_MOBILE ? Math.min(maxVisibleRoads, 44) : maxVisibleRoads);
     };
+
     refreshVisible();
     refreshVisibleRef.current = refreshVisible;
-    const refreshZoom = () => {
-      zoomRef.current = map.getZoom();
-      refreshVisible();
-    };
+    map.on('move', refreshVisible);
+    map.on('zoom', refreshVisible);
     map.on('moveend', refreshVisible);
-    map.on('zoomend', refreshZoom);
+    map.on('zoomend', refreshVisible);
+
+    // Invisible radial reference field. This state is never rendered directly;
+    // it only changes particle energy as wavefronts pass over moving points.
+    const getWaveState = (elapsed: number, center: L.Point, size: L.Point) => {
+      const trafficLevel = baseLevelRef.current;
+      const seconds = 3.2 - trafficLevel * 0.75;
+      const maxRadius = Math.hypot(size.x, size.y / PERSPECTIVE_Y) * 0.72;
+      const minRadius = Math.max(34, Math.min(size.x, size.y) * 0.055);
+      const span = Math.max(1, maxRadius - minRadius);
+      const originPhase = (elapsed / seconds) % 1;
+      const phases = Array.from({ length: RADIAL_WAVE_COUNT }, (_, index) =>
+        (originPhase + index / RADIAL_WAVE_COUNT) % 1,
+      );
+      return { center, phases, minRadius, span, maxRadius };
+    };
+
+    const waveInfluenceAt = (
+      x: number,
+      y: number,
+      waveState: ReturnType<typeof getWaveState>,
+    ) => {
+      const dx = x - waveState.center.x;
+      const dy = (y - waveState.center.y) / PERSPECTIVE_Y;
+      const radialDistance = Math.hypot(dx, dy);
+      const sigma = Math.max(18, waveState.maxRadius * 0.025);
+      let influence = 0;
+
+      for (const phase of waveState.phases) {
+        const radius = waveState.minRadius + phase * waveState.span;
+        const delta = radialDistance - radius;
+        const hit = Math.exp(-(delta * delta) / (2 * sigma * sigma));
+        influence = Math.max(influence, hit * Math.pow(1 - phase, 0.28));
+      }
+      return influence;
+    };
 
     const frame = (now: number) => {
       rafRef.current = requestAnimationFrame(frame);
       if (now - lastFrame < FRAME_INTERVAL) return;
       lastFrame = now;
 
-      const elapsed = (now - start) / 1000; // seconds
+      const elapsed = (now - start) / 1000;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
       const size = map.getSize();
+      ctx.clearRect(0, 0, size.x, size.y);
 
-      // batch dots per congestion color (one path per color)
-      ctx.globalAlpha = 0.95;
-      const colors = ['#2EE6A6', '#FFB547', '#FF5470'];
+      const zoom = zoomRef.current;
+      const zoomScale = Math.min(1.38, Math.max(0.62, 0.76 + (zoom - 11) * 0.1));
+      const pulseOrigin = map.latLngToContainerPoint(
+        L.latLng(KRAKOW_PULSE_ORIGIN[0], KRAKOW_PULSE_ORIGIN[1]),
+      );
+      const waveState = getWaveState(elapsed, pulseOrigin, size);
+
+      const colors = [TRAFFIC_COLORS.flow, TRAFFIC_COLORS.slow, TRAFFIC_COLORS.jam];
       for (const color of colors) {
-        ctx.fillStyle = color;
-        ctx.strokeStyle = color;
-        ctx.shadowColor = color;
-        const zoomScale = Math.min(1.35, Math.max(0.62, 0.68 + (zoomRef.current - 11) * 0.12));
-        ctx.shadowBlur = IS_MOBILE ? 1.5 : 2.5;
-        ctx.lineWidth = (IS_MOBILE ? 0.45 : 0.6) * zoomScale;
-        ctx.lineCap = 'round';
+        const dots: RenderDot[] = [];
 
-        const tails: Array<{ from: L.Point; to: L.Point }> = [];
-        const dots: Array<{ x: number; y: number; radius: number }> = [];
         for (const road of visibleRoads) {
-          if (road.color !== color) continue;
-          const tailLength = Math.min(18, Math.max(6, road.speed * 0.45));
-          for (let d = 0; d < road.dotCount; d++) {
-            const dist =
-              ((road.phases[d] * road.totalLen + elapsed * road.speed) %
-                road.totalLen + road.totalLen) % road.totalLen;
+          if (road.visual.color !== color) continue;
+          const detailRatio = zoom < 11 ? 0.52 : zoom < 12 ? 0.76 : 1;
+          const activeDots = Math.max(2, Math.ceil(road.dotCount * detailRatio));
+
+          for (let d = 0; d < activeDots; d++) {
+            const phase = road.phases[Math.floor((d / activeDots) * road.phases.length)] ?? 0;
+            const dist = ((phase * road.totalLen + elapsed * road.speed) % road.totalLen + road.totalLen) % road.totalLen;
             const ll = pointAt(road, dist);
             const pt = map.latLngToContainerPoint(ll);
+
             if (
               pt.x < -boundsPad || pt.y < -boundsPad ||
               pt.x > size.x + boundsPad || pt.y > size.y + boundsPad
             ) continue;
 
-            const tailDist = dist - tailLength;
-            const pulse = 0.1 * Math.sin(elapsed * 5 + road.phases[d] * Math.PI * 2);
-            if (tailDist > 0) {
-              const tail = map.latLngToContainerPoint(pointAt(road, tailDist));
-              tails.push({ from: tail, to: pt });
-            }
-            dots.push({
-              x: pt.x,
-              y: pt.y,
-              radius: Math.max(0.55, (0.72 + road.intensity * 0.42 + pulse) * zoomScale),
-            });
+            const wave = waveInfluenceAt(pt.x, pt.y, waveState);
+            const radius = Math.max(
+              0.72,
+              (0.92 + road.intensity * 0.66) * road.visual.radiusScale * zoomScale,
+            );
+            dots.push({ x: pt.x, y: pt.y, radius, alpha: road.visual.dotAlpha, wave });
           }
         }
 
-        ctx.globalAlpha = 0.18;
-        ctx.beginPath();
-        for (const tail of tails) {
-          ctx.moveTo(tail.from.x, tail.from.y);
-          ctx.lineTo(tail.to.x, tail.to.y);
-        }
-        ctx.stroke();
+        if (!dots.length) continue;
 
-        ctx.globalAlpha = 0.82;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.11;
         ctx.beginPath();
         for (const dot of dots) {
-          ctx.moveTo(dot.x + dot.radius, dot.y);
-          ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+          const haloRadius = dot.radius * (2.15 + dot.wave * 2.15);
+          ctx.moveTo(dot.x + haloRadius, dot.y);
+          ctx.arc(dot.x, dot.y, haloRadius, 0, Math.PI * 2);
         }
         ctx.fill();
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = color;
+        ctx.globalAlpha = Math.min(0.99, dots.reduce((sum, dot) => sum + dot.alpha, 0) / dots.length);
+        ctx.beginPath();
+        for (const dot of dots) {
+          const coreRadius = dot.radius * (0.94 + dot.wave * 0.42);
+          ctx.moveTo(dot.x + coreRadius, dot.y);
+          ctx.arc(dot.x, dot.y, coreRadius, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.globalAlpha = 0.58;
+        ctx.beginPath();
+        for (const dot of dots) {
+          const highlightRadius = Math.max(0.34, dot.radius * (0.24 + dot.wave * 0.05));
+          ctx.moveTo(dot.x + highlightRadius, dot.y);
+          ctx.arc(dot.x, dot.y, highlightRadius, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.restore();
       }
-      ctx.shadowBlur = 0;
+
       ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
     };
+
     rafRef.current = requestAnimationFrame(frame);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
       map.off('resize', resize);
+      map.off('move', refreshVisible);
+      map.off('zoom', refreshVisible);
       map.off('moveend', refreshVisible);
-      map.off('zoomend', refreshZoom);
+      map.off('zoomend', refreshVisible);
       refreshVisibleRef.current = () => {};
       canvas.remove();
       canvasRef.current = null;

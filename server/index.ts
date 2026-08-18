@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { registerTrustRoutes } from "./trustRoutes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
@@ -33,7 +34,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Lightweight health endpoint for readiness checks. Do not expose process details.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
@@ -47,11 +47,8 @@ export function log(message: string, source = "express") {
   }));
 }
 
-// Log request metadata only. Response bodies can contain earnings, addresses,
-// profiles, payment data, and uploaded CSV-derived information.
 app.use((req, res, next) => {
   const start = Date.now();
-
   res.on("finish", () => {
     if (req.path.startsWith("/api")) {
       console.log(JSON.stringify({
@@ -66,32 +63,25 @@ app.use((req, res, next) => {
       }));
     }
   });
-
   next();
 });
 
 (async () => {
+  registerTrustRoutes(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = Number.isInteger(err?.status) ? err.status : 500;
     const safeStatus = status >= 400 && status < 600 ? status : 500;
-
     console.error(JSON.stringify({
       timestamp: new Date().toISOString(),
       severity: "ERROR",
       source: "express",
       requestId: res.locals.requestId,
       status: safeStatus,
-      error: process.env.NODE_ENV === "production"
-        ? "Request failed"
-        : String(err?.message || "Internal Server Error"),
+      error: process.env.NODE_ENV === "production" ? "Request failed" : String(err?.message || "Internal Server Error"),
     }));
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
+    if (res.headersSent) return next(err);
     return res.status(safeStatus).json({
       message: safeStatus >= 500 ? "Internal Server Error" : String(err?.message || "Request failed"),
       requestId: res.locals.requestId,
@@ -106,15 +96,7 @@ app.use((req, res, next) => {
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  httpServer.listen({ port, host: "0.0.0.0" }, () => log(`serving on port ${port}`));
 
   const shutdown = () => {
     log("Shutting down gracefully...");

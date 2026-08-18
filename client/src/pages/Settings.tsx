@@ -2,8 +2,9 @@ import { Sidebar } from "@/components/Sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { User, MapPin, Bell, Info, Phone, Download, CreditCard, Crown } from "lucide-react";
+import { User, MapPin, Bell, Info, Phone, Download, CreditCard, Crown, Trash2 } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { InstallGuideDialog, detectPlatform, getPlatformLabel, isStandalone } from "@/components/InstallPrompt";
@@ -12,11 +13,37 @@ export default function Settings() {
   const { user, subscriptionInfo } = useAuth();
   const [, setLocation] = useLocation();
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const platform = detectPlatform(false);
   const alreadyInstalled = isStandalone();
+
+  const deleteAccount = async () => {
+    if (!deletePassword || deleteConfirmation !== "DELETE") return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const response = await fetch("/api/account", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword, confirmation: "DELETE" }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || "Account deletion failed.");
+      window.location.href = "/login";
+    } catch (reason) {
+      setDeleteError(reason instanceof Error ? reason.message : "Account deletion failed.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleVersionTap = useCallback(() => {
     tapCountRef.current += 1;
@@ -184,6 +211,22 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          {user?.role !== "admin" && <Card className="border-destructive/35">
+            <CardHeader className="flex flex-row items-center gap-3">
+              <Trash2 className="w-5 h-5 text-destructive" />
+              <CardTitle>Delete account</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">Permanently deletes your profile, trips, earnings, preferences, activity and local payment records. This cannot be undone.</p>
+              {!deleteOpen ? <Button variant="destructive" onClick={() => setDeleteOpen(true)}>Show deletion controls</Button> : <div className="space-y-3">
+                <Input type="password" autoComplete="current-password" maxLength={128} value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} placeholder="Password" aria-label="Password to confirm account deletion" />
+                <Input maxLength={6} value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} placeholder="Type DELETE" aria-label="Type DELETE to confirm" />
+                {deleteError && <p className="text-sm text-destructive" role="alert">{deleteError}</p>}
+                <Button variant="destructive" disabled={deleting || !deletePassword || deleteConfirmation !== "DELETE"} onClick={() => void deleteAccount()}>{deleting ? "Deleting…" : "Delete account permanently"}</Button>
+              </div>}
+            </CardContent>
+          </Card>}
 
           <Card>
             <CardHeader className="flex flex-row items-center gap-3">

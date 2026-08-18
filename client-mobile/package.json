@@ -1,6 +1,6 @@
 {
   "name": "pluspuls-mobile",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -10,8 +10,10 @@
     "export:web": "expo export --platform web",
     "deploy:web": "eas deploy --prod",
     "build:development": "npx eas-cli@21.8.0 build --platform android --profile development",
-    "build:apk": "npx eas-cli@21.8.0 build --platform android --profile production",
+    "build:apk": "npx eas-cli@21.8.0 build --platform android --profile preview",
     "build:preview": "npx eas-cli@21.8.0 build --platform android --profile preview",
+    "build:production": "npx eas-cli@21.8.0 build --platform android --profile production",
+    "submit:production": "npx eas-cli@21.8.0 submit --platform android --profile production",
     "doctor": "npx expo-doctor@1.17.11",
     "typecheck": "tsc --noEmit"
   },

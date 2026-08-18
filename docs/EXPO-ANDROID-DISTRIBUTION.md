@@ -8,8 +8,8 @@ the current production site.
 
 1. Render continues serving the Express API and PostgreSQL.
 2. EAS Hosting serves the Expo Router web/PWA deployment.
-3. EAS Build signs an Android APK using internal distribution.
-4. The PWA route **Instalacja** links to the current HTTPS APK build URL.
+3. EAS Build signs an Android APK for internal distribution or an AAB for Google Play.
+4. The PWA route **Instalacja** links only to the current internal APK URL.
 
 ## Required one-time values
 
@@ -24,3 +24,7 @@ the current production site.
 EAS can create a signed APK without a Google Play developer account. This is
 direct distribution: Android users must approve installation from their
 browser, and every future APK must use the same signing key and package name.
+
+The `production` EAS profile is intentionally different: it produces an AAB,
+uses store distribution and hides external subscription purchase links. Keep
+the internal APK on `preview`; do not repurpose the Play profile as an APK.

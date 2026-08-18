@@ -116,6 +116,52 @@ export type NotificationPrefs = {
   frequency: string;
 };
 
+export type SubscriptionInfo = {
+  status: "trial" | "active" | "expired" | "cancelled";
+  isPremium: boolean;
+  trialEndsAt: string | null;
+  trialDaysLeft: number | null;
+  subscriptionExpiresAt: string | null;
+  subscriptionDaysLeft: number | null;
+  price: number;
+  currency: string;
+};
+
+export type AuthUser = {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  role: "user" | "admin" | string;
+  status: "pending" | "approved" | "active" | "rejected" | "disabled" | "suspended" | string;
+  accountType?: "driver" | "provider" | null;
+  companyName?: string | null;
+  phoneNumber?: string | null;
+  isPremium?: boolean;
+  subscriptionInfo?: SubscriptionInfo;
+};
+
+export type RegisterInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  termsAccepted: true;
+  privacyAccepted: true;
+};
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+    readonly issues?: { field?: string; message?: string }[],
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export function productionApiUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim() || DEFAULT_API_URL;
   const url = new URL(configured);
@@ -131,7 +177,7 @@ function apiUrl(path: string): string {
   return Platform.OS === "web" ? path : `${productionApiUrl()}${path}`;
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(apiUrl(path), {
     credentials: "include",
     ...init,
@@ -142,9 +188,24 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const suffix = response.status === 401 || response.status === 403 ? " Sign in may be required." : "";
-    throw new Error(`PlusPuls API request failed (${response.status}).${suffix}`);
+    const body = await response.json().catch(() => ({})) as {
+      message?: unknown;
+      code?: unknown;
+      issues?: { field?: string; message?: string }[];
+    };
+    const fallback = response.status === 401
+      ? "Zaloguj się, aby kontynuować."
+      : response.status === 403
+        ? "To konto nie ma dostępu do tej funkcji."
+        : `PlusPuls API request failed (${response.status}).`;
+    throw new ApiError(
+      typeof body.message === "string" ? body.message.slice(0, 240) : fallback,
+      response.status,
+      typeof body.code === "string" ? body.code.slice(0, 80) : undefined,
+      Array.isArray(body.issues) ? body.issues.slice(0, 8) : undefined,
+    );
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -230,5 +291,66 @@ export function saveNotificationPreferences(data: NotificationPrefs) {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+  });
+}
+
+export async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
+  try {
+    return await apiFetch<AuthUser>("/api/auth/user", { signal });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
+  }
+}
+
+export function loginWithPassword(email: string, password: string) {
+  return apiFetch<{ user: AuthUser }>("/api/login/password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+  });
+}
+
+export function registerWithPassword(input: RegisterInput) {
+  return apiFetch<{ user: AuthUser }>("/api/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, email: input.email.trim().toLowerCase() }),
+  });
+}
+
+export function logoutCurrentUser() {
+  return apiFetch<void>("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" } });
+}
+
+export function deleteCurrentAccount(password: string) {
+  return apiFetch<void>("/api/account", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password, confirmation: "DELETE" }),
+  });
+}
+
+export function updateAccountType(accountType: "driver" | "provider", companyName?: string) {
+  return apiFetch<AuthUser>("/api/auth/account-type", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accountType, companyName: companyName?.trim() || undefined }),
+  });
+}
+
+export function sendHeartbeat(signal?: AbortSignal) {
+  return apiFetch<void>("/api/heartbeat", { method: "POST", signal });
+}
+
+export function submitTrustReport(input: { kind: string; message: string; contactEmail?: string }) {
+  return apiFetch<{ received: boolean; reference: string }>("/api/trust/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      kind: input.kind.slice(0, 50),
+      message: input.message.trim().slice(0, 4000),
+      contactEmail: input.contactEmail?.trim().slice(0, 254) || undefined,
+    }),
   });
 }

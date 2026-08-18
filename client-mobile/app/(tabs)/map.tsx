@@ -10,7 +10,7 @@ import { theme } from "@/lib/theme";
 export default function MapScreen() {
   const [time, setTime] = useState({ hours: 0, minutes: 0 });
   const { data, error, loading, refresh } = useLiveHeat(time.hours, time.minutes);
-  const { position, status } = useDeviceLocation();
+  const { position, status, request } = useDeviceLocation();
 
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
@@ -20,6 +20,9 @@ export default function MapScreen() {
           <Text style={styles.title}>Live Demand Map</Text>
           <Text style={styles.meta}>{status === "active" ? "GPS active" : "Kraków grid"} · CARTO / OpenStreetMap</Text>
         </View>
+        {status !== "active" ? <Pressable accessibilityRole="button" accessibilityLabel="Use my location on the demand map" onPress={() => void request()} disabled={status === "requesting"} style={styles.refresh}>
+          {status === "requesting" ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="locate-outline" size={18} color={status === "denied" ? theme.warning : theme.primary} />}
+        </Pressable> : null}
         <Pressable accessibilityRole="button" accessibilityLabel="Refresh live map" onPress={refresh} style={styles.refresh}>
           {loading ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="refresh" size={18} color={theme.primary} />}
         </Pressable>

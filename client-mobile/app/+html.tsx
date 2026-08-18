@@ -11,7 +11,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="theme-color" content="#0A0D14" />
         <meta name="description" content="PlusPuls — live Kraków demand intelligence for drivers." />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" href="/pluspuls-icon.svg" type="image/svg+xml" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: "html,body,#root{height:100%;margin:0;background:#0A0D14}body{overflow:hidden}" }} />
         <script

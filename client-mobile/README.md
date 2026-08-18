@@ -1,7 +1,7 @@
 # PlusPuls Expo client
 
-Universal Expo Router client for Android and EAS Hosting. The existing Express
-API remains a separate deployment.
+Universal Expo Router client for Android and EAS Hosting. Render continues to
+serve the Express API and PostgreSQL from the same `android` branch.
 
 ## Local setup
 
@@ -23,6 +23,18 @@ tiles, demand hexes, animated road-flow signals, layers and time forecasts. The
 radial signal remains an invisible point-response input; no radial rings are
 drawn. API data crosses a validated native/WebView bridge and the page CSP only
 permits pinned Leaflet assets and CARTO tiles. No Google Maps key is required.
+Foreground location is optional and is requested only after the driver taps the
+location control. Background location is explicitly blocked.
+
+## DEV parity
+
+- Public dashboard and exact live demand map remain available without an account.
+- Login, registration, approval status and driver/fleet profile selection use the
+  same cookie session and API as the Render web app.
+- Planner, earnings and notification preferences are protected Premium features.
+- Settings expose privacy/trust pages, reporting, subscription status and
+  password-confirmed account deletion.
+- Admin approval and CSV import intentionally remain web operations.
 
 ## First EAS setup
 
@@ -36,17 +48,27 @@ npx eas-cli build:configure
 Keep the Android package `pl.pluspuls.app`. Let EAS create and securely retain
 the Android keystore, then record a protected backup of that credential.
 
-## Signed APK
+## Signed internal APK
 
 ```bash
 npm run build:preview
-# after validation
 npm run build:apk
 ```
 
-Both profiles use EAS internal distribution and produce an installable APK.
+The preview profile uses EAS internal distribution and produces an installable APK.
 Copy the HTTPS build URL into `EXPO_PUBLIC_ANDROID_APK_URL`, set the release
 version and optional SHA-256, then redeploy the web client.
+
+## Google Play AAB
+
+```bash
+npm run build:production
+npm run submit:production
+```
+
+Production uses store distribution and creates an Android App Bundle. It also
+disables the external subscription-management link. Complete Play Billing before
+selling digital access in the Play build. See `docs/GOOGLE-PLAY-READINESS.md`.
 
 ## EAS Hosting / PWA
 

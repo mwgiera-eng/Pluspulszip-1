@@ -1,0 +1,19 @@
+import { useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { PageHeader } from "@/components/PageHeader";
+import { submitTrustReport } from "@/lib/api";
+import { theme } from "@/lib/theme";
+
+const KINDS = [
+  { value: "feedback", label: "Techniczne" },
+  { value: "accessibility", label: "Dostępność" },
+  { value: "privacy", label: "Prywatność" },
+  { value: "speak-up", label: "Bezpieczeństwo" },
+] as const;
+export default function FeedbackScreen() {
+  const [kind, setKind] = useState<typeof KINDS[number]["value"]>("feedback"), [message, setMessage] = useState(""), [email, setEmail] = useState(""), [sending, setSending] = useState(false), [result, setResult] = useState<string | null>(null);
+  const send = async () => { if (message.trim().length < 10) return setResult("Opisz problem co najmniej w 10 znakach."); setSending(true); setResult(null); try { const response = await submitTrustReport({ kind, message, contactEmail: email }); setMessage(""); setResult(`Zgłoszenie przyjęte: ${response.reference}`); } catch (reason) { setResult(reason instanceof Error ? reason.message : "Nie udało się wysłać zgłoszenia."); } finally { setSending(false); } };
+  return <SafeAreaView style={styles.screen}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}><PageHeader title="Zgłoś problem" subtitle="Prywatność, bezpieczeństwo, dostępność lub usterka" /><View style={styles.kinds}>{KINDS.map((item) => <Pressable key={item.value} onPress={() => setKind(item.value)} style={[styles.kind, kind === item.value && styles.kindActive]}><Text style={[styles.kindText, kind === item.value && styles.kindTextActive]}>{item.label}</Text></Pressable>)}</View><TextInput accessibilityLabel="Opis zgłoszenia" value={message} onChangeText={setMessage} multiline maxLength={4000} placeholder="Opisz sytuację bez haseł, danych płatniczych i kodów uwierzytelniających…" placeholderTextColor={theme.muted} style={[styles.input, styles.message]} /><TextInput accessibilityLabel="E-mail kontaktowy opcjonalny" value={email} onChangeText={setEmail} inputMode="email" autoCapitalize="none" maxLength={254} placeholder="E-mail do odpowiedzi (opcjonalnie)" placeholderTextColor={theme.muted} style={styles.input} />{result ? <Text accessibilityRole="alert" style={styles.result}>{result}</Text> : null}<Pressable accessibilityRole="button" disabled={sending} onPress={() => void send()} style={[styles.button, sending && { opacity: .55 }]}>{sending ? <ActivityIndicator color={theme.background} /> : <Text style={styles.buttonText}>Wyślij zgłoszenie</Text>}</Pressable></ScrollView></SafeAreaView>;
+}
+const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: theme.background }, content: { padding: 18, paddingBottom: 42, gap: 12 }, kinds: { flexDirection: "row", flexWrap: "wrap", gap: 7 }, kind: { minHeight: 42, justifyContent: "center", paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.surface }, kindActive: { borderColor: theme.primary, backgroundColor: "rgba(46,230,166,.08)" }, kindText: { color: theme.muted, fontSize: 10, fontWeight: "800" }, kindTextActive: { color: theme.primary }, input: { minHeight: 50, padding: 13, borderRadius: 14, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.surface, color: theme.text, fontSize: 12 }, message: { minHeight: 170, textAlignVertical: "top" }, result: { color: theme.primarySoft, fontSize: 10.5, lineHeight: 15 }, button: { minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: 15, backgroundColor: theme.primary }, buttonText: { color: theme.background, fontSize: 12, fontWeight: "900" } });

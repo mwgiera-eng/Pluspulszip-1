@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHeader } from "@/components/PageHeader";
+import { FeatureGate } from "@/components/FeatureGate";
 import { fetchNotificationPreferences, saveNotificationPreferences, type NotificationPrefs } from "@/lib/api";
 import { theme } from "@/lib/theme";
 
@@ -31,6 +32,10 @@ const FREQUENCIES = [
 ];
 
 export default function NotificationsScreen() {
+  return <FeatureGate premium><NotificationsContent /></FeatureGate>;
+}
+
+function NotificationsContent() {
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

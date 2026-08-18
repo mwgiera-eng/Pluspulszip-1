@@ -1,15 +1,17 @@
 import { users, type User, type UpsertUser } from "@shared/models/auth";
 import { db } from "./db";
-import { eq, sql, gte } from "drizzle-orm";
+import { eq, gte, sql } from "drizzle-orm";
 
-// Lightweight auth storage (migrated from replit integration). Used by server-side auth.
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: UpsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserPhone(userId: string, phone: string): Promise<User>;
   updateUserStatus(userId: string, status: string): Promise<User>;
   updateAccountType(userId: string, accountType: string, companyName?: string): Promise<User>;
   updateHeartbeat(userId: string, lat?: number, lng?: number): Promise<void>;
+  updateLastLogin(userId: string): Promise<User>;
   getActiveUsers(windowMinutes: number): Promise<User[]>;
   getAllUsers(): Promise<User[]>;
   getPendingUsers(): Promise<User[]>;
@@ -22,9 +24,27 @@ class AuthStorage implements IAuthStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const normalized = email.trim().toLowerCase();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.email}) = ${normalized}`)
+      .limit(1);
+    return user;
+  }
+
+  async createUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({ ...userData, email: userData.email?.trim().toLowerCase(), status: userData.status ?? "pending" })
+      .returning();
+    return user;
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const updateSet: Record<string, any> = {
-      email: userData.email,
+      email: userData.email?.trim().toLowerCase(),
       firstName: userData.firstName,
       lastName: userData.lastName,
       profileImageUrl: userData.profileImageUrl,
@@ -34,11 +54,8 @@ class AuthStorage implements IAuthStorage {
     updateSet.status = userData.status ?? "pending";
     const [user] = await db
       .insert(users)
-      .values({ ...userData, status: userData.status ?? "pending" })
-      .onConflictDoUpdate({
-        target: users.id,
-        set: updateSet,
-      })
+      .values({ ...userData, email: userData.email?.trim().toLowerCase(), status: userData.status ?? "pending" })
+      .onConflictDoUpdate({ target: users.id, set: updateSet })
       .returning();
     return user;
   }
@@ -79,21 +96,26 @@ class AuthStorage implements IAuthStorage {
     await db.update(users).set(update).where(eq(users.id, userId));
   }
 
+  async updateLastLogin(userId: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ lastLoginAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
   async getActiveUsers(windowMinutes: number): Promise<User[]> {
     const cutoff = new Date(Date.now() - windowMinutes * 60 * 1000);
-    return await db
-      .select()
-      .from(users)
-      .where(gte(users.lastSeenAt, cutoff))
-      .orderBy(users.lastSeenAt);
+    return db.select().from(users).where(gte(users.lastSeenAt, cutoff)).orderBy(users.lastSeenAt);
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).orderBy(users.createdAt);
+    return db.select().from(users).orderBy(users.createdAt);
   }
 
   async getPendingUsers(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.status, "pending")).orderBy(users.createdAt);
+    return db.select().from(users).where(eq(users.status, "pending")).orderBy(users.createdAt);
   }
 
   async getUserCount(): Promise<number> {
@@ -104,7 +126,6 @@ class AuthStorage implements IAuthStorage {
 
 export const authStorage = new AuthStorage();
 
-/** Strip sensitive fields before sending a user object to any client. */
 export function sanitizeUser<T extends { passwordHash?: string | null }>(user: T): Omit<T, "passwordHash"> {
   const { passwordHash, ...safe } = user;
   return safe;
