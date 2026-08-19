@@ -10,7 +10,7 @@ import { theme } from "@/lib/theme";
 export default function MapScreen() {
   const [time, setTime] = useState({ hours: 0, minutes: 0 });
   const { data, error, loading, refresh } = useLiveHeat(time.hours, time.minutes);
-  const { position, status, request } = useDeviceLocation();
+  const { position, status, request } = useDeviceLocation({ requestOnFocus: true });
 
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>

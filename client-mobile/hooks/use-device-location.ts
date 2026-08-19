@@ -5,7 +5,13 @@ import type { DevicePosition } from "@/lib/types";
 
 type LocationState = "idle" | "requesting" | "active" | "denied" | "unavailable";
 
-export function useDeviceLocation() {
+type LocationOptions = {
+  requestOnFocus?: boolean;
+};
+
+let automaticRequestAttemptedForSession = false;
+
+export function useDeviceLocation({ requestOnFocus = false }: LocationOptions = {}) {
   const [position, setPosition] = useState<DevicePosition | null>(null);
   const [status, setStatus] = useState<LocationState>("idle");
   const subscription = useRef<Location.LocationSubscription | null>(null);
@@ -70,8 +76,18 @@ export function useDeviceLocation() {
         const generation = watchGeneration.current;
         setStatus("requesting");
         try {
-          const permission = await Location.getForegroundPermissionsAsync();
+          let permission = await Location.getForegroundPermissionsAsync();
           if (!mounted.current || !focused.current || generation !== watchGeneration.current) return;
+          if (
+            permission.status !== Location.PermissionStatus.GRANTED &&
+            requestOnFocus &&
+            permission.canAskAgain &&
+            !automaticRequestAttemptedForSession
+          ) {
+            automaticRequestAttemptedForSession = true;
+            permission = await Location.requestForegroundPermissionsAsync();
+            if (!mounted.current || !focused.current || generation !== watchGeneration.current) return;
+          }
           if (permission.status !== Location.PermissionStatus.GRANTED) {
             setStatus(
               permission.status === Location.PermissionStatus.DENIED ? "denied" : "idle",
@@ -91,7 +107,7 @@ export function useDeviceLocation() {
         focused.current = false;
         stopWatching();
       };
-    }, [startWatching, stopWatching]),
+    }, [requestOnFocus, startWatching, stopWatching]),
   );
 
   const request = useCallback(async () => {

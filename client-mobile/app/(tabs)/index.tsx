@@ -14,7 +14,7 @@ export default function DashboardScreen() {
   const [zones, setZones] = useState<ZoneProfitHeatResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { position, status, request } = useDeviceLocation();
+  const { position, status, request } = useDeviceLocation({ requestOnFocus: true });
   const announced = useRef<string | null>(null);
 
   const refresh = async () => {
