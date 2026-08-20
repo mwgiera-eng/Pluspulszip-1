@@ -29,7 +29,12 @@ const text = (value: unknown) => String(value ?? "").slice(0, 120);
 
 function cleanGeometry(value: unknown, limit: number) {
   if (!Array.isArray(value)) return [];
-  return value.slice(0, limit).flatMap((point) => {
+  const sampled = value.length <= limit
+    ? value
+    : Array.from({ length: limit }, (_, index) =>
+        value[Math.round((index * (value.length - 1)) / (limit - 1))],
+      );
+  return sampled.flatMap((point) => {
     if (!Array.isArray(point)) return [];
     const lat = validNumber(point[0], 49, 51);
     const lng = validNumber(point[1], 18, 22);
@@ -61,7 +66,10 @@ export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 
   const [baseLevel, setBaseLevel] = useState(0);
   const [narrative, setNarrative] = useState("");
   const [targetTime, setTargetTime] = useState("LIVE");
-  const [sourceError, setSourceError] = useState<string | null>(null);
+  const [fallbackCells, setFallbackCells] = useState<HeatCell[]>([]);
+  const [trafficError, setTrafficError] = useState<string | null>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [forecastError, setForecastError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -69,9 +77,19 @@ export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 
       const [traffic, routeData] = await Promise.allSettled([
         fetchRoadTraffic(controller.signal), fetchRouteGeometries(position, controller.signal),
       ]);
-      if (traffic.status === "fulfilled") { setRoads(traffic.value.roads); setBaseLevel(traffic.value.baseLevel); }
-      if (routeData.status === "fulfilled") setRoutes(routeData.value);
-      setSourceError(traffic.status === "rejected" ? "Sygnały drogowe są chwilowo niedostępne" : null);
+      if (traffic.status === "fulfilled") {
+        setRoads(traffic.value.roads);
+        setBaseLevel(traffic.value.baseLevel);
+        setTrafficError(null);
+      } else if (!(traffic.reason instanceof Error && traffic.reason.name === "AbortError")) {
+        setTrafficError("Sygnały drogowe są chwilowo niedostępne");
+      }
+      if (routeData.status === "fulfilled") {
+        setRoutes(routeData.value);
+        setRouteError(routeData.value.length ? null : "Serwer nie zwrócił geometrii tras");
+      } else if (!(routeData.reason instanceof Error && routeData.reason.name === "AbortError")) {
+        setRouteError("Geometria tras jest chwilowo niedostępna");
+      }
     };
     void load();
     const interval = setInterval(() => void load(), 30_000);
@@ -81,15 +99,33 @@ export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 
   useEffect(() => {
     const controller = new AbortController();
     void fetchZoneProfitHeat(hoursAhead, minutesAhead, controller.signal)
-      .then((data) => { setNarrative(data.transitionNarrative); setTargetTime(data.targetTime); })
+      .then((data) => {
+        setNarrative(data.transitionNarrative);
+        setTargetTime(data.targetTime);
+        setFallbackCells(data.zones.flatMap((zone) => {
+          const lat = validNumber(zone.lat, 49, 51);
+          const lng = validNumber(zone.lng, 18, 22);
+          if (lat === null || lng === null) return [];
+          return [{
+            id: `zone-${zone.zoneId}`,
+            lat,
+            lng,
+            radius: validNumber(zone.radius, 20, 5000) ?? 650,
+            score: validNumber(zone.profitScore, 0, 100) ?? 0,
+          }];
+        }));
+        setForecastError(null);
+      })
       .catch((reason: unknown) => {
-        if (!(reason instanceof Error && reason.name === "AbortError")) setSourceError("Prognoza jest chwilowo niedostępna");
+        if (!(reason instanceof Error && reason.name === "AbortError")) setForecastError("Prognoza jest chwilowo niedostępna");
       });
     return () => controller.abort();
   }, [hoursAhead, minutesAhead]);
 
-  const payload = useMemo(() => ({
-    cells: cells.slice(0, 700).flatMap((cell) => {
+  const payload = useMemo(() => {
+    const visibleCells = cells.length ? cells : fallbackCells;
+    return ({
+    cells: visibleCells.slice(0, 700).flatMap((cell) => {
       const lat = validNumber(cell.lat, 49, 51);
       const lng = validNumber(cell.lng, 18, 22);
       return lat === null || lng === null ? [] : [{ id: text(cell.id), lat, lng, radius: validNumber(cell.radius, 20, 5000) ?? 300, score: validNumber(cell.score, 0, 100) ?? 0 }];
@@ -97,8 +133,11 @@ export function MapExperience({ cells, position, hoursAhead = 0, minutesAhead = 
     roads: cleanRoads(roads), routes: cleanRoutes(routes),
     position: position ? { lat: validNumber(position.lat, 49, 51), lng: validNumber(position.lng, 18, 22), accuracy: validNumber(position.accuracy, 1, 5000) ?? 100 } : null,
     baseLevel: validNumber(baseLevel, 0, 1) ?? 0,
-    narrative: text(narrative), targetTime: text(targetTime), error: text(heatError || sourceError),
-  }), [baseLevel, cells, heatError, narrative, position, roads, routes, sourceError, targetTime]);
+    narrative: text(narrative),
+    targetTime: text(targetTime),
+    error: text([heatError, routeError, trafficError, forecastError].filter(Boolean).join(" · ")),
+  });
+  }, [baseLevel, cells, fallbackCells, forecastError, heatError, narrative, position, roads, routeError, routes, targetTime, trafficError]);
 
   const sendPayload = useCallback(() => {
     if (ready) webView.current?.postMessage(JSON.stringify({ type: "map-data", payload }));
