@@ -24,3 +24,4 @@ export function hexCoordinates(cell: HeatCell) {
     };
   });
 }
+

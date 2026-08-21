@@ -83,3 +83,4 @@ export const LIVE_DEMAND_MAP_HTML = String.raw`<!doctype html>
   </script>
 </body>
 </html>`;
+

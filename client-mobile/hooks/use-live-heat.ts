@@ -34,3 +34,4 @@ export function useLiveHeat(hoursAhead: number, minutesAhead = 0) {
 
   return { data, error, loading, refresh: () => refresh() };
 }
+

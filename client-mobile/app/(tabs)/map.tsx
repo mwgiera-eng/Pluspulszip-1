@@ -18,7 +18,7 @@ export default function MapScreen() {
         <View style={styles.liveDot} />
         <View style={styles.titleGroup}>
           <Text style={styles.title}>Mapa popytu i tras</Text>
-          <Text style={styles.meta}>{status === "active" ? "GPS aktywny" : "Siatka Krakowa"} · CARTO / OpenStreetMap</Text>
+          <Text style={styles.meta}>{status === "active" ? "GPS aktywny" : "Siatka Krakowa"} · natywne Google Maps</Text>
         </View>
         {status !== "active" ? <Pressable accessibilityRole="button" accessibilityLabel="Użyj mojej lokalizacji na mapie" onPress={() => void request()} disabled={status === "requesting"} style={styles.refresh}>
           {status === "requesting" ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="locate-outline" size={18} color={status === "denied" ? theme.warning : theme.primary} />}

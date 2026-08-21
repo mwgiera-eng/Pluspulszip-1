@@ -17,7 +17,7 @@ function secureApkUrl(): string | null {
 
 export default function DownloadScreen() {
   const apkUrl = secureApkUrl();
-  const version = process.env.EXPO_PUBLIC_RELEASE_VERSION || "1.2.2";
+  const version = process.env.EXPO_PUBLIC_RELEASE_VERSION || "1.2.3";
   const checksum = process.env.EXPO_PUBLIC_ANDROID_APK_SHA256?.trim();
 
   return (

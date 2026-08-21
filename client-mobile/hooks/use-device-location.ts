@@ -130,3 +130,4 @@ export function useDeviceLocation({ requestOnFocus = false }: LocationOptions = 
 
   return { position, status, request };
 }
+

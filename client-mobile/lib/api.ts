@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import type { HeatResponse } from "./types";
+import { isHeatResponse, isRoadTrafficResponse, isRouteGeometries } from "./map-model";
 
 const DEFAULT_API_URL = "https://pluspulszip-1.onrender.com";
 const TRUSTED_API_ORIGINS = new Set([DEFAULT_API_URL]);
@@ -225,25 +226,6 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return response.json() as Promise<T>;
 }
 
-function isHeatResponse(value: unknown): value is HeatResponse {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<HeatResponse>;
-  return (
-    typeof candidate.generatedAt === "string" &&
-    typeof candidate.radius === "number" &&
-    Array.isArray(candidate.cells) &&
-    candidate.cells.every(
-      (cell) =>
-        cell &&
-        typeof cell.id === "string" &&
-        Number.isFinite(cell.lat) &&
-        Number.isFinite(cell.lng) &&
-        Number.isFinite(cell.radius) &&
-        Number.isFinite(cell.score),
-    )
-  );
-}
-
 export async function fetchHeat(hoursAhead: number, minutesAhead = 0, signal?: AbortSignal): Promise<HeatResponse> {
   const boundedHours = Math.max(0, Math.min(12, Math.round(hoursAhead)));
   const boundedMinutes = Math.max(0, Math.min(59, Math.round(minutesAhead)));
@@ -260,22 +242,29 @@ export async function fetchHeat(hoursAhead: number, minutesAhead = 0, signal?: A
   return data;
 }
 
-export function fetchRoadTraffic(signal?: AbortSignal) {
-  return apiFetch<RoadTrafficResponse>("/api/road-traffic", { signal });
+export async function fetchRoadTraffic(signal?: AbortSignal): Promise<RoadTrafficResponse> {
+  const data: unknown = await apiFetch<unknown>("/api/road-traffic", { signal });
+  if (!isRoadTrafficResponse(data)) throw new Error("Road traffic data has an unexpected format");
+  return data;
 }
 
 export function fetchMapData(signal?: AbortSignal) {
   return apiFetch<MapDataResponse>("/api/map-data", { signal });
 }
 
-export function fetchRouteGeometries(position?: { lat: number; lng: number } | null, signal?: AbortSignal) {
+export async function fetchRouteGeometries(
+  position?: { lat: number; lng: number } | null,
+  signal?: AbortSignal,
+): Promise<RouteGeometryData[]> {
   const query = new URLSearchParams();
   if (position && Number.isFinite(position.lat) && Number.isFinite(position.lng)) {
     query.set("lat", String(position.lat));
     query.set("lng", String(position.lng));
   }
   const suffix = query.size ? `?${query.toString()}` : "";
-  return apiFetch<RouteGeometryData[]>(`/api/route-geometries${suffix}`, { signal });
+  const data: unknown = await apiFetch<unknown>(`/api/route-geometries${suffix}`, { signal });
+  if (!isRouteGeometries(data)) throw new Error("Route geometry data has an unexpected format");
+  return data;
 }
 
 export function fetchZoneProfitHeat(hoursAhead: number, minutesAhead = 0, signal?: AbortSignal) {

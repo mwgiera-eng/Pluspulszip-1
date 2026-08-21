@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 21.8.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "requireCommit": true
   },
   "build": {
     "preview": {
@@ -19,12 +20,14 @@
     },
     "production": {
       "node": "22.13.1",
+      "environment": "production",
       "developmentClient": false,
       "distribution": "store",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://pluspulszip-1.onrender.com",
         "EXPO_PUBLIC_RELEASE_CHANNEL": "production",
+        "EXPO_PUBLIC_MAP_TEST_MODE": "false",
         "EXPO_PUBLIC_ALLOW_EXTERNAL_SUBSCRIPTIONS": "false"
       },
       "android": {

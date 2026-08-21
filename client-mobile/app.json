@@ -2,14 +2,14 @@
   "expo": {
     "name": "PlusPuls",
     "slug": "pluspuls",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "orientation": "portrait",
     "scheme": "pluspuls",
     "userInterfaceStyle": "dark",
     "icon": "./assets/icon.png",
     "android": {
       "package": "pl.pluspuls.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0D14"

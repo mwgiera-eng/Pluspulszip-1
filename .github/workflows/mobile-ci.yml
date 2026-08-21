@@ -6,10 +6,13 @@ on:
     paths:
       - "client-mobile/**"
       - ".github/workflows/mobile-ci.yml"
+      - ".github/workflows/mobile-release.yml"
   pull_request:
     paths:
       - "client-mobile/**"
       - ".github/workflows/mobile-ci.yml"
+      - ".github/workflows/mobile-release.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,27 +22,151 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        with:
+          fail-on-severity: high
+
+  validate:
+    name: Expo and map contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: client-mobile
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.13.1
           cache: npm
           cache-dependency-path: client-mobile/package-lock.json
       - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
+      - run: npm run test:ci
       - run: npm run typecheck
       - run: npm run doctor
       - run: npm run export:android
+        env:
+          EXPO_PUBLIC_RELEASE_CHANNEL: ci
       - run: npm run export:web
 
-  dependency-review:
-    if: github.event_name == 'pull_request'
+  map-api-contract:
+    name: Live map API contract
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: client-mobile
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.13.1
+      - run: npm run check:map-api
+        env:
+          EXPO_PUBLIC_API_URL: https://pluspulszip-1.onrender.com
+
+  native-release-compile:
+    name: Native Android release compile
+    if: github.event_name == 'pull_request'
+    needs: [validate, map-api-contract]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: client-mobile
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+          cache-dependency-path: client-mobile/package-lock.json
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - run: npm ci --ignore-scripts
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          EXPO_PUBLIC_RELEASE_CHANNEL: ci
+      - run: chmod +x android/gradlew
+      - name: Compile release AAB (not for Play upload)
+        run: ./android/gradlew :app:bundleRelease -x lint -x test --no-daemon -PreactNativeArchitectures=arm64-v8a
+        env:
+          CI: "1"
+
+  native-map-smoke:
+    name: Native map emulator smoke
+    if: github.event_name != 'pull_request'
+    needs: [validate, map-api-contract]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: client-mobile
+    env:
+      EXPO_PUBLIC_API_URL: https://pluspulszip-1.onrender.com
+      EXPO_PUBLIC_MAP_TEST_MODE: "true"
+      EXPO_PUBLIC_RELEASE_CHANNEL: ci
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+          cache-dependency-path: client-mobile/package-lock.json
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - name: Require the certificate-restricted CI Maps key
+        run: test -n "$GOOGLE_MAPS_ANDROID_API_KEY"
+        env:
+          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_CI_API_KEY }}
+      - run: npm ci --ignore-scripts
+      - name: Generate native Android project with CI map key
+        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_CI_API_KEY }}
+      - run: chmod +x android/gradlew scripts/android-map-smoke.sh
+      - name: Print CI signing certificate fingerprint
+        run: ./android/gradlew :app:signingReport --no-daemon
+      - name: Build emulator release APK
+        run: ./android/gradlew :app:assembleRelease -x lint -x test --no-daemon -PreactNativeArchitectures=x86_64
+        env:
+          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_CI_API_KEY }}
+      - name: Enable KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercise map tiles, overlays, GPS route, and zoom
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: cd client-mobile && bash scripts/android-map-smoke.sh
+      - name: Upload map smoke evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-map-smoke-${{ github.sha }}
+          path: client-mobile/artifacts/map-smoke
+          if-no-files-found: warn
+          retention-days: 7

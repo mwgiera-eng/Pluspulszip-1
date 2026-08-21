@@ -1,6 +1,6 @@
 {
   "name": "pluspuls-mobile",
-  "version": "1.2.1",
+  "version": "1.2.3",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -12,10 +12,13 @@
     "deploy:web": "eas deploy --prod",
     "build:apk": "npx eas-cli@21.8.0 build --platform android --profile preview",
     "build:preview": "npx eas-cli@21.8.0 build --platform android --profile preview",
-    "build:production": "npx eas-cli@21.8.0 build --platform android --profile production",
+    "build:production": "npm run verify:release && npx eas-cli@21.8.0 build --platform android --profile production",
     "submit:production": "npx eas-cli@21.8.0 submit --platform android --profile production",
     "doctor": "npx expo-doctor@1.17.11",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:ci": "node --test tests/*.test.cjs",
+    "check:map-api": "node scripts/check-map-api.cjs",
+    "verify:release": "node scripts/verify-release.cjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -36,6 +39,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
+    "react-native-maps": "1.27.2",
     "react-native-webview": "13.16.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",

@@ -1,0 +1,81 @@
+name: Build Play AAB
+
+on:
+  push:
+    branches: [android]
+    paths:
+      - "client-mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+      - ".github/workflows/mobile-release.yml"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: play-aab-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify-green-commit:
+    name: Verify exact green commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    steps:
+      - name: Require android push and wait for exact Mobile CI SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_REF_NAME" = "android"
+          for attempt in $(seq 1 180); do
+            run_state="$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs" \
+              -f head_sha="$GITHUB_SHA" -f event=push -f per_page=20 \
+              --jq '[.workflow_runs[] | select(.name == "Mobile CI" and .path == ".github/workflows/mobile-ci.yml")] | first | [.status, (.conclusion // "pending"), .id] | @tsv' 2>/dev/null || true)"
+            if test -n "$run_state"; then
+              IFS=$'\t' read -r status conclusion run_id <<< "$run_state"
+              if test "$status" = "completed"; then
+                test "$conclusion" = "success"
+                required_jobs="$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs" \
+                  --jq '[.jobs[] | select(.name == "Expo and map contracts" or .name == "Live map API contract" or .name == "Native map emulator smoke") | select(.conclusion == "success") | .name] | unique | length')"
+                test "$required_jobs" = "3"
+                echo "Releasing $GITHUB_SHA after successful Mobile CI run $run_id"
+                exit 0
+              fi
+            fi
+            echo "Waiting for Mobile CI on $GITHUB_SHA ($attempt/180)..."
+            sleep 30
+          done
+          echo "Timed out waiting for Mobile CI on $GITHUB_SHA" >&2
+          exit 1
+
+  build-aab:
+    name: EAS production AAB
+    needs: verify-green-commit
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: client-mobile
+    env:
+      EXPO_PUBLIC_RELEASE_CHANNEL: production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+          cache-dependency-path: client-mobile/package-lock.json
+      - name: Require EAS credentials
+        run: test -n "$EXPO_TOKEN"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci --ignore-scripts
+      - name: Verify clean exact android release provenance
+        run: npm run verify:release
+      - name: Build Play bundle only after the exact CI gate
+        run: npx eas-cli@21.8.0 build --platform android --profile production --non-interactive --wait
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

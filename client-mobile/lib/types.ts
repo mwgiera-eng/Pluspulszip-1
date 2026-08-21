@@ -17,3 +17,4 @@ export type DevicePosition = {
   lng: number;
   accuracy: number;
 };
+
