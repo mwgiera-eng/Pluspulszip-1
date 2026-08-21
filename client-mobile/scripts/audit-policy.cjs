@@ -26,6 +26,16 @@ function advisoryId(via) {
   return match ? match[0] : null;
 }
 
+function isKnownUnsafeExpoDowngrade(fixAvailable) {
+  return Boolean(
+    fixAvailable &&
+      typeof fixAvailable === "object" &&
+      fixAvailable.name === "expo" &&
+      fixAvailable.version === "53.0.27" &&
+      fixAvailable.isSemVerMajor === true,
+  );
+}
+
 function collectHighAdvisories(name, vulnerabilities, seen = new Set()) {
   if (seen.has(name)) return { advisories: new Set(), unresolved: new Set() };
   seen.add(name);
@@ -76,7 +86,10 @@ function evaluateAudit(report, lockfile, now = new Date()) {
 
   const imageSize = vulnerabilities["image-size"];
   if (imageSize?.severity === "high") {
-    if (imageSize.fixAvailable !== false) {
+    if (
+      imageSize.fixAvailable !== false &&
+      !isKnownUnsafeExpoDowngrade(imageSize.fixAvailable)
+    ) {
       failures.push("image-size: a remediation is now available; remove or re-review the waiver");
     }
     const nodes = Array.isArray(imageSize.nodes) ? [...imageSize.nodes].sort() : [];
@@ -135,4 +148,5 @@ module.exports = {
   POLICY_EXPIRES_AT,
   collectHighAdvisories,
   evaluateAudit,
+  isKnownUnsafeExpoDowngrade,
 };

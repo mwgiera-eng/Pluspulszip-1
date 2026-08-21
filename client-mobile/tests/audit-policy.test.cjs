@@ -23,7 +23,7 @@ function allowedReport() {
     vulnerabilities: {
       "image-size": {
         severity: "high",
-        fixAvailable: false,
+        fixAvailable: { name: "expo", version: "53.0.27", isSemVerMajor: true },
         nodes: ["node_modules/image-size"],
         via: [
           { severity: "high", url: "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr" },
@@ -39,6 +39,13 @@ test("accepts only the pinned Expo/Metro advisory closure before expiry", () => 
   const verdict = evaluateAudit(allowedReport(), lockfile(), new Date("2026-08-21T00:00:00Z"));
   assert.equal(verdict.ok, true);
   assert.deepEqual(verdict.failures, []);
+});
+
+test("also accepts no remediation for the unpatched parser", () => {
+  const report = allowedReport();
+  report.vulnerabilities["image-size"].fixAvailable = false;
+  const verdict = evaluateAudit(report, lockfile(), new Date("2026-08-21T00:00:00Z"));
+  assert.equal(verdict.ok, true);
 });
 
 test("rejects an unrelated high-severity advisory", () => {
