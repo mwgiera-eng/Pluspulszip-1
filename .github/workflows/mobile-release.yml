@@ -34,10 +34,16 @@ jobs:
             if test -n "$run_state"; then
               IFS=$'\t' read -r status conclusion run_id <<< "$run_state"
               if test "$status" = "completed"; then
-                test "$conclusion" = "success"
+                if test "$conclusion" != "success"; then
+                  echo "::error::Mobile CI run $run_id for $GITHUB_SHA concluded $conclusion"
+                  exit 1
+                fi
                 required_jobs="$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs" \
                   --jq '[.jobs[] | select(.name == "Expo and map contracts" or .name == "Live map API contract" or .name == "Native map emulator smoke") | select(.conclusion == "success") | .name] | unique | length')"
-                test "$required_jobs" = "3"
+                if test "$required_jobs" != "3"; then
+                  echo "::error::Mobile CI run $run_id has $required_jobs/3 required successful jobs"
+                  exit 1
+                fi
                 echo "Releasing $GITHUB_SHA after successful Mobile CI run $run_id"
                 exit 0
               fi

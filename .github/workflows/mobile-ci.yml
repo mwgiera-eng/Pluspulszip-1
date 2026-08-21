@@ -49,7 +49,8 @@ jobs:
           cache: npm
           cache-dependency-path: client-mobile/package-lock.json
       - run: npm ci --ignore-scripts
-      - run: npm audit --audit-level=high
+      - name: Audit dependencies with pinned temporary Expo/Metro waiver
+        run: npm run audit:ci
       - run: npm run test:ci
       - run: npm run typecheck
       - run: npm run doctor

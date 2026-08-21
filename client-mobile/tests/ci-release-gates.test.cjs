@@ -16,7 +16,8 @@ test("push CI executes a real API 36 native map smoke", () => {
   assert.match(ci, /api-level: 36/);
   assert.match(ci, /EXPO_PUBLIC_MAP_TEST_MODE: "true"/);
   assert.match(ci, /android-map-smoke\.sh/);
-  assert.match(ci, /npm audit --audit-level=high/);
+  assert.match(ci, /npm run audit:ci/);
+  assert.match(ci, /pinned temporary Expo\/Metro waiver/);
   assert.match(smoke, /pluspuls:\/\/map/);
   assert.match(smoke, /zoom test OK/);
   assert.match(smoke, /GPS active/);
@@ -47,7 +48,8 @@ test("Play AAB workflow automatically builds only the exact green android push",
   assert.match(release, /select\(\.name == "Mobile CI" and \.path == "\.github\/workflows\/mobile-ci\.yml"\)/);
   assert.match(release, /\.path == "\.github\/workflows\/mobile-ci\.yml"/);
   assert.match(release, /required_jobs/);
-  assert.match(release, /test "\$conclusion" = "success"/);
+  assert.match(release, /test "\$conclusion" != "success"/);
+  assert.match(release, /Mobile CI run \$run_id for \$GITHUB_SHA concluded \$conclusion/);
   assert.doesNotMatch(release, /env:pull/);
   assert.match(release, /npm run verify:release/);
   assert.match(release, /eas-cli@21\.8\.0 build --platform android --profile production --non-interactive --wait/);

@@ -15,6 +15,7 @@
     "build:production": "npm run verify:release && npx eas-cli@21.8.0 build --platform android --profile production",
     "submit:production": "npx eas-cli@21.8.0 submit --platform android --profile production",
     "doctor": "npx expo-doctor@1.17.11",
+    "audit:ci": "node scripts/audit-ci.cjs",
     "typecheck": "tsc --noEmit",
     "test:ci": "node --test tests/*.test.cjs",
     "check:map-api": "node scripts/check-map-api.cjs",
