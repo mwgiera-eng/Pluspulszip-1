@@ -52,14 +52,21 @@ assert_zoom_stage() {
       # pure-Python PNG decoding must not consume the stage's dwell window.
       python3 scripts/map-smoke-tools.py analyze "$base"
       python3 scripts/map-smoke-tools.py stable "$base_initial" "$base" --max-ratio 0.04
+      # Gate the production palette, not CI-only substitute colors, so a green
+      # smoke run proves the same overlays shipped in the Play AAB are legible.
       python3 scripts/map-smoke-tools.py count-colors "$overlays" \
-        --color E11D48 --tolerance 15 --min-count 500
+        --color FF5470 --color 2EE6A6 --color 20B983 --color 475569 \
+        --tolerance 15 --min-count 500
       python3 scripts/map-smoke-tools.py count-colors "$overlays" \
-        --color F59E0B --tolerance 15 --min-count 100
+        --color FF5470 --color F59E0B --color 10B981 \
+        --tolerance 15 --min-count 100
       python3 scripts/map-smoke-tools.py count-colors "$overlays" \
-        --color 06B6D4 --tolerance 15 --min-count 50
+        --color 2563EB --color 00A86B --color 7C3AED \
+        --tolerance 15 --min-count 100
+      # The GPS-derived navigation route must itself be painted blue; generic
+      # profitable routes cannot satisfy this assertion.
       python3 scripts/map-smoke-tools.py count-colors "$overlays" \
-        --color 7C3AED --tolerance 15 --min-count 100
+        --color 2563EB --tolerance 15 --min-count 100
       return 0
     fi
   done
@@ -116,27 +123,64 @@ for attempt in $(seq 1 36); do
     tap_label "Heatmapa" "true"
     adb exec-out screencap -p > "$artifact_dir/map-smoke-heat.png"
     python3 scripts/map-smoke-tools.py colors "$artifact_dir/map-smoke-base.png" "$artifact_dir/map-smoke-heat.png" \
-      --color E11D48 --tolerance 15 --min-delta 1000
+      --color FF5470 --color 2EE6A6 --color 20B983 --color 475569 \
+      --tolerance 15 --min-delta 1000
     tap_label "Heatmapa" "false"
 
     tap_label "Trasy" "true"
     adb exec-out screencap -p > "$artifact_dir/map-smoke-routes.png"
     python3 scripts/map-smoke-tools.py colors "$artifact_dir/map-smoke-base.png" "$artifact_dir/map-smoke-routes.png" \
-      --color 7C3AED --tolerance 15 --min-delta 250
+      --color 2563EB --color 00A86B --color 7C3AED \
+      --tolerance 15 --min-delta 250
+    python3 scripts/map-smoke-tools.py colors "$artifact_dir/map-smoke-base.png" "$artifact_dir/map-smoke-routes.png" \
+      --color 2563EB --tolerance 15 --min-delta 100
     tap_label "Trasy" "false"
 
     tap_label "Ruch drogowy" "true"
     adb exec-out screencap -p > "$artifact_dir/map-smoke-traffic.png"
     python3 scripts/map-smoke-tools.py colors "$artifact_dir/map-smoke-base.png" "$artifact_dir/map-smoke-traffic.png" \
-      --color F59E0B --color 06B6D4 --tolerance 15 --min-delta 500
+      --color FF5470 --color F59E0B --color 10B981 \
+      --tolerance 15 --min-delta 500
     tap_label "Heatmapa" "true"
     tap_label "Trasy" "true"
     adb exec-out screencap -p > "$artifact_dir/map-smoke-passed.png"
 
+    # Reproduce a real user pan, wait for the native camera/tiles to settle, and
+    # prove that the production overlays remain geographic and rendered.
+    adb shell input swipe 720 1040 380 1040 700
+    sleep 5
+    adb shell uiautomator dump /sdcard/pluspuls-map.xml >/dev/null 2>&1
+    adb exec-out cat /sdcard/pluspuls-map.xml > "$ui_dump"
+    grep -q "GPS active" "$ui_dump"
+    grep -q "drive_to_pickup" "$ui_dump"
+    adb exec-out screencap -p > "$artifact_dir/map-pan-overlays.png"
+    python3 scripts/map-smoke-tools.py count-colors "$artifact_dir/map-pan-overlays.png" \
+      --color FF5470 --color 2EE6A6 --color 20B983 --color 475569 \
+      --tolerance 15 --min-count 300
+    python3 scripts/map-smoke-tools.py count-colors "$artifact_dir/map-pan-overlays.png" \
+      --color FF5470 --color F59E0B --color 10B981 \
+      --tolerance 15 --min-count 75
+    python3 scripts/map-smoke-tools.py count-colors "$artifact_dir/map-pan-overlays.png" \
+      --color 2563EB --color 00A86B --color 7C3AED \
+      --tolerance 15 --min-count 75
+
+    tap_label "Heatmapa" "false"
+    tap_label "Ruch drogowy" "false"
+    tap_label "Trasy" "false"
+    adb exec-out screencap -p > "$artifact_dir/map-pan-base-initial.png"
+    sleep 3
+    adb exec-out screencap -p > "$artifact_dir/map-pan-base.png"
+    python3 scripts/map-smoke-tools.py analyze "$artifact_dir/map-pan-base.png"
+    python3 scripts/map-smoke-tools.py stable \
+      "$artifact_dir/map-pan-base-initial.png" "$artifact_dir/map-pan-base.png" --max-ratio 0.04
+    tap_label "Heatmapa" "true"
+    tap_label "Ruch drogowy" "true"
+    tap_label "Trasy" "true"
+
     adb logcat -d | grep -E "FATAL EXCEPTION|API key not found|Authorization failure|Google Maps Android API.*failed" > "$filtered_log" || true
     test ! -s "$filtered_log"
     trap - ERR
-    echo "Native map smoke passed: readable Google tiles, GPS route, zoom, heat, traffic, and route pixels verified."
+    echo "Native map smoke passed: readable Google tiles, GPS route, zoom, pan, heat, traffic, and route pixels verified."
     exit 0
   fi
 

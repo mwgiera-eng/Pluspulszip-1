@@ -8,7 +8,7 @@ export function useLiveHeat(hoursAhead: number, minutesAhead = 0) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
-    setLoading((current) => current);
+    setLoading(true);
     try {
       const next = await fetchHeat(hoursAhead, minutesAhead, signal);
       setData(next);
@@ -34,4 +34,3 @@ export function useLiveHeat(hoursAhead: number, minutesAhead = 0) {
 
   return { data, error, loading, refresh: () => refresh() };
 }
-

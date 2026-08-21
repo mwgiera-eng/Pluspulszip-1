@@ -5,6 +5,8 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "components", "MapExperience.native.tsx"), "utf8");
+const screen = fs.readFileSync(path.join(root, "app", "(tabs)", "map.tsx"), "utf8");
+const heatHook = fs.readFileSync(path.join(root, "hooks", "use-live-heat.ts"), "utf8");
 
 test("Android map is native and has no WebView/Leaflet rendering path", () => {
   assert.match(source, /from "react-native-maps"/);
@@ -33,10 +35,11 @@ test("zoom stability and visible route-bound signals are regression-gated", () =
   assert.match(source, /focusRoute\?\.role/);
   assert.match(source, /tracksViewChanges=\{false\}/);
   assert.match(source, /`\$\{road\.id\}-\$\{index\}-\$\{color\}`/);
-  assert.match(source, /mapTestMode \? "#F59E0B" : trafficColor/);
-  assert.match(source, /testMode \? "#06B6D4" : signal\.color/);
-  assert.match(source, /mapTestMode \? "#E11D48" : color\.stroke/);
-  assert.match(source, /mapTestMode \? "#7C3AED" : appearance\.color/);
+  assert.match(source, /strokeColor=\{trafficColor\(road\.intensity\)\}/);
+  assert.match(source, /backgroundColor: signal\.color/);
+  assert.match(source, /strokeColor=\{color\.stroke\}/);
+  assert.match(source, /strokeColor=\{appearance\.color\}/);
+  assert.doesNotMatch(source, /mapTestMode \? ["']#[0-9A-Fa-f]{6}/);
   assert.match(source, /const TrafficSignals = memo/);
   assert.doesNotMatch(source, /nextKey = `\$\{focus\.id\}:\$\{position/);
 });
@@ -44,4 +47,15 @@ test("zoom stability and visible route-bound signals are regression-gated", () =
 test("only useful layers are exposed", () => {
   assert.match(source, /type LayerId = "heat" \| "traffic" \| "routes"/);
   assert.doesNotMatch(source, /LayerId = .*points|LayerId = .*zones/);
+});
+
+test("manual refresh retries heat, traffic, and GPS routes and exposes degraded GPS routing", () => {
+  assert.match(screen, /refreshAllMapData/);
+  assert.match(screen, /setMapRefreshToken/);
+  assert.match(screen, /refreshToken=\{mapRefreshToken\}/);
+  assert.match(source, /refreshToken = 0/);
+  assert.match(source, /position\?\.lat, position\?\.lng, refreshToken/);
+  assert.match(source, /!nextRoutes\.some\(\(route\) => route\.role === "drive_to_pickup"\)/);
+  assert.match(source, /Trasa GPS jest chwilowo niedostępna/);
+  assert.match(heatHook, /setLoading\(true\)/);
 });

@@ -5,11 +5,15 @@ on:
     branches: [android]
     paths:
       - "client-mobile/**"
+      - "server/**"
+      - "shared/**"
       - ".github/workflows/mobile-ci.yml"
       - ".github/workflows/mobile-release.yml"
   pull_request:
     paths:
       - "client-mobile/**"
+      - "server/**"
+      - "shared/**"
       - ".github/workflows/mobile-ci.yml"
       - ".github/workflows/mobile-release.yml"
   workflow_dispatch:
@@ -138,11 +142,22 @@ jobs:
         run: npx expo prebuild --platform android --clean --no-install
       - run: chmod +x android/gradlew scripts/android-map-smoke.sh
       - name: Print CI signing certificate fingerprint
-        run: ./android/gradlew :app:signingReport --no-daemon
+        run: |
+          fingerprint="$(keytool -list -v \
+            -keystore android/app/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android \
+            | awk -F': ' '/^[[:space:]]*SHA1:/{print $2; exit}')"
+          if test -z "$fingerprint"; then
+            echo "::error::Could not read the generated Android CI debug certificate SHA-1."
+            exit 1
+          fi
+          echo "CI debug SHA-1: $fingerprint"
       - name: Require the CI Maps key after printing its signing fingerprint
         run: |
           if test -z "$GOOGLE_MAPS_ANDROID_API_KEY"; then
-            echo "::error::Missing GOOGLE_MAPS_ANDROID_CI_API_KEY. Create a Maps SDK for Android key restricted to package pl.pluspuls.app and the SHA-1 printed by the previous signingReport step, then add it as a GitHub Actions secret and rerun this workflow."
+            echo "::error::Missing GOOGLE_MAPS_ANDROID_CI_API_KEY. Create a Maps SDK for Android key restricted to package pl.pluspuls.app and the CI debug SHA-1 printed by the previous step, then add it as a GitHub Actions secret and rerun this workflow."
             exit 1
           fi
       - name: Build emulator release APK

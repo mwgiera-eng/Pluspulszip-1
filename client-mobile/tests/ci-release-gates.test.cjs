@@ -13,6 +13,8 @@ const visualGate = fs.readFileSync(path.join(root, "scripts", "map-smoke-tools.p
 test("push CI executes a real API 36 native map smoke", () => {
   assert.match(ci, /Native map emulator smoke/);
   assert.match(ci, /GOOGLE_MAPS_ANDROID_CI_API_KEY/);
+  assert.match(ci, /- "server\/\*\*"/);
+  assert.match(ci, /- "shared\/\*\*"/);
   assert.match(ci, /Print CI signing certificate fingerprint/);
   assert.match(ci, /Require the CI Maps key after printing its signing fingerprint/);
   assert.ok(
@@ -20,7 +22,11 @@ test("push CI executes a real API 36 native map smoke", () => {
       ci.indexOf("Require the CI Maps key after printing its signing fingerprint"),
     "the first keyless run must expose the stable CI signing SHA-1 before it fails closed",
   );
-  assert.match(ci, /package pl\.pluspuls\.app and the SHA-1 printed/);
+  assert.match(ci, /keytool -list -v/);
+  assert.match(ci, /android\/app\/debug\.keystore/);
+  assert.match(ci, /CI debug SHA-1/);
+  assert.doesNotMatch(ci, /gradlew :app:signingReport/);
+  assert.match(ci, /package pl\.pluspuls\.app and the CI debug SHA-1 printed/);
   assert.match(ci, /api-level: 36/);
   assert.match(ci, /EXPO_PUBLIC_MAP_TEST_MODE: "true"/);
   assert.match(ci, /android-map-smoke\.sh/);
@@ -33,9 +39,17 @@ test("push CI executes a real API 36 native map smoke", () => {
   assert.match(smoke, /map-smoke-tools\.py analyze/);
   assert.match(smoke, /map-smoke-tools\.py colors/);
   assert.match(smoke, /map-smoke-tools\.py stable/);
+  assert.match(smoke, /Gate the production palette/);
+  assert.match(smoke, /--color FF5470 --color 2EE6A6 --color 20B983 --color 475569/);
+  assert.match(smoke, /--color FF5470 --color F59E0B --color 10B981/);
+  assert.match(smoke, /--color 2563EB --color 00A86B --color 7C3AED/);
+  assert.match(smoke, /--color 2563EB --tolerance 15 --min-count 100/);
   assert.match(smoke, /assert_zoom_stage "initial"/);
   assert.match(smoke, /assert_zoom_stage "zoom-in"/);
   assert.match(smoke, /assert_zoom_stage "zoom-out"/);
+  assert.match(smoke, /adb shell input swipe/);
+  assert.match(smoke, /map-pan-overlays\.png/);
+  assert.match(smoke, /map-pan-base\.png/);
   assert.match(smoke, /map-\$\{stage\}-base\.png/);
   assert.match(smoke, /map-\$\{stage\}-overlays\.png/);
   assert.match(smoke, /Heatmapa/);

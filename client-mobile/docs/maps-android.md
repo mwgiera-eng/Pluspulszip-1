@@ -23,14 +23,14 @@ Use a separately restricted local/debug key in `client-mobile/.env` for `npx exp
 
 ## GitHub map gate
 
-Configure these repository/environment secrets:
+Configure the credentials in these exact scopes:
 
-- `GOOGLE_MAPS_ANDROID_CI_API_KEY`: Maps SDK for Android key restricted to package `pl.pluspuls.app` and the CI release-certificate SHA-1.
-- `EXPO_TOKEN`: Expo access token used only by the gated AAB workflow.
+- GitHub Actions **repository or organization secret** `GOOGLE_MAPS_ANDROID_CI_API_KEY`: Maps SDK for Android key restricted to package `pl.pluspuls.app` and the generated CI debug-certificate SHA-1. The smoke job has no GitHub Environment binding, so an Environment-only secret will resolve empty.
+- GitHub **production Environment secret** `EXPO_TOKEN`: Expo access token used only by the gated AAB workflow, whose `build-aab` job is bound to that Environment.
 
 The production Maps key has one source of truth: the EAS `production` secret created above. It is not copied to GitHub and is never pulled into the candidate-controlled runner. The local EAS submission pass uses a non-working sentinel while resolving dynamic config; the EAS builder evaluates the config again with `EAS_BUILD=true`, receives the production secret, and fails closed if it is absent.
 
-The `Native map emulator smoke` job deliberately generates the native project and prints its signing report before checking the secret. On first setup, open the failed job, copy the SHA-1 from `Print CI signing certificate fingerprint`, create the Android-restricted CI key for `pl.pluspuls.app`, save it as `GOOGLE_MAPS_ANDROID_CI_API_KEY`, and rerun the workflow. No placeholder or production key is needed to bootstrap the fingerprint. The emulator gate then installs a release APK on API 36, injects a Kraków GPS fix, and opens `pluspuls://map`. At the settled initial, zoom-in, and zoom-out cameras it first disables every overlay and gates the bare Google tiles for brightness, contrast, coverage, and stability; it then restores all overlays and separately counts unique heat, road, animated-signal, and route colors. The final state must contain an active GPS-derived `drive_to_pickup` route, and isolated heat, traffic, and route screenshots must add enough of their exact overlay colors. Maps authorization and Android fatal errors also fail the job.
+The `Native map emulator smoke` job deliberately generates the native project and reads the SHA-1 directly from its generated debug keystore before checking the secret. On first setup, open the failed job, copy `CI debug SHA-1` from `Print CI signing certificate fingerprint`, create the Android-restricted CI key for `pl.pluspuls.app`, save it as the repository/organization secret `GOOGLE_MAPS_ANDROID_CI_API_KEY`, and rerun the workflow. No placeholder or production key is needed to bootstrap the fingerprint. The emulator gate then installs a release APK on API 36, injects a Kraków GPS fix, and opens `pluspuls://map`. At the settled initial, zoom-in, zoom-out, and real swipe/pan cameras it gates the bare Google tiles for brightness, contrast, coverage, and stability and counts the production heat, road, animated-signal, and route colors. The final state must contain an active GPS-derived `drive_to_pickup` route, and isolated heat, traffic, and route screenshots must add enough of their exact overlay colors. Maps authorization and Android fatal errors also fail the job.
 
 ## Required release sequence
 

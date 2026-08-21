@@ -40,6 +40,20 @@ test("heat cells remain geographic and malformed cells are rejected", () => {
   assert.equal(isHeatResponse({ generatedAt: new Date().toISOString(), radius: 300, cells: [] }), false);
 });
 
+test("bounded heat rendering samples the whole Kraków grid instead of one edge", () => {
+  const grid = Array.from({ length: 1_001 }, (_, index) => ({
+    id: `cell-${index}`,
+    lat: 50.0647,
+    lng: 19.56 + (index * 0.68) / 1_000,
+    radius: 120,
+    score: 60,
+  }));
+  const sampled = sanitizeHeatCells(grid, 5);
+  assert.equal(sampled.length, 5);
+  assert.equal(sampled[0].id, "cell-0");
+  assert.equal(sampled.at(-1).id, "cell-1000");
+});
+
 test("road signals and routes keep server [lat,lng] geometry", () => {
   const roads = sanitizeRoads([road]);
   const routes = sanitizeRoutes([route]);

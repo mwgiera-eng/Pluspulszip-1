@@ -52,7 +52,10 @@ function sanitizeGeometry(value, limit = 500) {
 
 function sanitizeHeatCells(value, limit = 500) {
   if (!Array.isArray(value)) return [];
-  return value.slice(0, limit).flatMap((cell, index) => {
+  // The API grid is emitted in geographic scan order. Taking only the first
+  // cells biases the visible heat layer toward one edge of Kraków; even
+  // sampling preserves whole-city coverage while bounding native polygons.
+  return sampleEvenly(value, limit).flatMap((cell, index) => {
     if (!cell || typeof cell !== "object") return [];
     const lat = finiteNumber(cell.lat);
     const lng = finiteNumber(cell.lng);

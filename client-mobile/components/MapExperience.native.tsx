@@ -19,6 +19,7 @@ type Props = {
   minutesAhead?: number;
   onTimeChange?: (hours: number, minutes: number) => void;
   heatError?: string | null;
+  refreshToken?: number;
 };
 
 type LayerId = "heat" | "traffic" | "routes";
@@ -77,7 +78,7 @@ function routeStyle(role: string) {
   return { color: "#7C3AED", width: 4, zIndex: 38 };
 }
 
-const TrafficSignals = memo(function TrafficSignals({ roads, testMode }: { roads: RoadOverlay[]; testMode: boolean }) {
+const TrafficSignals = memo(function TrafficSignals({ roads }: { roads: RoadOverlay[] }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -98,17 +99,16 @@ const TrafficSignals = memo(function TrafficSignals({ roads, testMode }: { roads
   );
 
   return signals.map((signal) => {
-    const markerColor = testMode ? "#06B6D4" : signal.color;
     return (
       <Marker
-        key={`${signal.key}-${markerColor}`}
+        key={signal.key}
         coordinate={signal.center}
         anchor={{ x: 0.5, y: 0.5 }}
         tracksViewChanges={false}
         tappable={false}
         zIndex={28}
       >
-        <View style={[styles.signalDot, { backgroundColor: markerColor }]} />
+        <View style={[styles.signalDot, { backgroundColor: signal.color }]} />
       </Marker>
     );
   });
@@ -121,6 +121,7 @@ export function MapExperience({
   minutesAhead = 0,
   onTimeChange,
   heatError,
+  refreshToken = 0,
 }: Props) {
   const mapRef = useRef<MapView | null>(null);
   const fittedRouteKey = useRef("");
@@ -142,14 +143,14 @@ export function MapExperience({
       <Polygon
         key={cell.id}
         coordinates={hexCoordinates(cell)}
-        fillColor={mapTestMode ? "rgba(225,29,72,0.45)" : color.fill}
-        strokeColor={mapTestMode ? "#E11D48" : color.stroke}
+        fillColor={color.fill}
+        strokeColor={color.stroke}
         strokeWidth={1}
         tappable={false}
         zIndex={5}
       />
     );
-  }), [heatCells, mapTestMode]);
+  }), [heatCells]);
 
   const roadOverlays = useMemo<RoadOverlay[]>(
     () => roads.map((road) => ({ ...road, coordinates: coordinates(road.geometry) })),
@@ -159,15 +160,13 @@ export function MapExperience({
     <Polyline
       key={`road-${road.id}`}
       coordinates={road.coordinates}
-      // CI uses one unique traffic color so zoom-frame pixel assertions cannot
-      // accidentally count similarly colored heat or route polygons.
-      strokeColor={mapTestMode ? "#F59E0B" : trafficColor(road.intensity)}
+      strokeColor={trafficColor(road.intensity)}
       strokeWidth={road.intensity >= 0.72 ? 4 : 3}
       lineCap="round"
       lineJoin="round"
       zIndex={18}
     />
-  )), [mapTestMode, roadOverlays]);
+  )), [roadOverlays]);
 
   const routeLines = useMemo(() => routes.map((route) => {
     const appearance = routeStyle(route.role);
@@ -175,14 +174,14 @@ export function MapExperience({
       <Polyline
         key={`route-${route.id}`}
         coordinates={coordinates(route.geometry)}
-        strokeColor={mapTestMode ? "#7C3AED" : appearance.color}
+        strokeColor={appearance.color}
         strokeWidth={appearance.width}
         lineCap="round"
         lineJoin="round"
         zIndex={appearance.zIndex}
       />
     );
-  }), [mapTestMode, routes]);
+  }), [routes]);
   const focusRoute = useMemo(() => selectFocusRoute(routes), [routes]);
 
   useEffect(() => {
@@ -204,7 +203,13 @@ export function MapExperience({
       if (routeResult.status === "fulfilled") {
         const nextRoutes = sanitizeRoutes(routeResult.value, 12);
         setRoutes(nextRoutes);
-        setRouteError(nextRoutes.length ? null : "Brak prawidłowej geometrii tras");
+        if (nextRoutes.length === 0) {
+          setRouteError("Brak prawidłowej geometrii tras");
+        } else if (position && !nextRoutes.some((route) => route.role === "drive_to_pickup")) {
+          setRouteError("Trasa GPS jest chwilowo niedostępna — pokazujemy pozostałe trasy");
+        } else {
+          setRouteError(null);
+        }
       } else if (!(routeResult.reason instanceof Error && routeResult.reason.name === "AbortError")) {
         setRouteError("Trasy są chwilowo niedostępne");
       }
@@ -216,7 +221,7 @@ export function MapExperience({
       controller.abort();
       clearInterval(interval);
     };
-  }, [position?.lat, position?.lng]);
+  }, [position?.lat, position?.lng, refreshToken]);
 
   useEffect(() => {
     if (!mapReady || routes.length === 0 || (mapTestMode && !zoomTestPassed)) return;
@@ -329,7 +334,7 @@ export function MapExperience({
       >
         {layers.heat ? heatPolygons : null}
         {layers.traffic ? roadLines : null}
-        {layers.traffic ? <TrafficSignals roads={roadOverlays} testMode={mapTestMode} /> : null}
+        {layers.traffic ? <TrafficSignals roads={roadOverlays} /> : null}
         {layers.routes ? routeLines : null}
 
         {position ? (

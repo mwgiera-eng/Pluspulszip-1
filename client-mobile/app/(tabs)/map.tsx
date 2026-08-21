@@ -9,8 +9,14 @@ import { theme } from "@/lib/theme";
 
 export default function MapScreen() {
   const [time, setTime] = useState({ hours: 0, minutes: 0 });
+  const [mapRefreshToken, setMapRefreshToken] = useState(0);
   const { data, error, loading, refresh } = useLiveHeat(time.hours, time.minutes);
   const { position, status, request } = useDeviceLocation({ requestOnFocus: true });
+
+  const refreshAllMapData = () => {
+    setMapRefreshToken((current) => current + 1);
+    void refresh();
+  };
 
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
@@ -23,7 +29,7 @@ export default function MapScreen() {
         {status !== "active" ? <Pressable accessibilityRole="button" accessibilityLabel="Użyj mojej lokalizacji na mapie" onPress={() => void request()} disabled={status === "requesting"} style={styles.refresh}>
           {status === "requesting" ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="locate-outline" size={18} color={status === "denied" ? theme.warning : theme.primary} />}
         </Pressable> : null}
-        <Pressable accessibilityRole="button" accessibilityLabel="Odśwież mapę" onPress={refresh} style={styles.refresh}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Odśwież mapę" onPress={refreshAllMapData} style={styles.refresh}>
           {loading ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="refresh" size={18} color={theme.primary} />}
         </Pressable>
       </View>
@@ -35,6 +41,7 @@ export default function MapScreen() {
           minutesAhead={time.minutes}
           onTimeChange={(hours, minutes) => setTime({ hours, minutes })}
           heatError={error}
+          refreshToken={mapRefreshToken}
         />
       </View>
     </SafeAreaView>
