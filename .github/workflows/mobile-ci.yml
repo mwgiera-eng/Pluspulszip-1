@@ -120,6 +120,7 @@ jobs:
       EXPO_PUBLIC_API_URL: https://pluspulszip-1.onrender.com
       EXPO_PUBLIC_MAP_TEST_MODE: "true"
       EXPO_PUBLIC_RELEASE_CHANNEL: ci
+      GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_CI_API_KEY }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -132,22 +133,20 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-      - name: Require the certificate-restricted CI Maps key
-        run: test -n "$GOOGLE_MAPS_ANDROID_API_KEY"
-        env:
-          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_CI_API_KEY }}
       - run: npm ci --ignore-scripts
-      - name: Generate native Android project with CI map key
+      - name: Generate native Android project
         run: npx expo prebuild --platform android --clean --no-install
-        env:
-          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_CI_API_KEY }}
       - run: chmod +x android/gradlew scripts/android-map-smoke.sh
       - name: Print CI signing certificate fingerprint
         run: ./android/gradlew :app:signingReport --no-daemon
+      - name: Require the CI Maps key after printing its signing fingerprint
+        run: |
+          if test -z "$GOOGLE_MAPS_ANDROID_API_KEY"; then
+            echo "::error::Missing GOOGLE_MAPS_ANDROID_CI_API_KEY. Create a Maps SDK for Android key restricted to package pl.pluspuls.app and the SHA-1 printed by the previous signingReport step, then add it as a GitHub Actions secret and rerun this workflow."
+            exit 1
+          fi
       - name: Build emulator release APK
         run: ./android/gradlew :app:assembleRelease -x lint -x test --no-daemon -PreactNativeArchitectures=x86_64
-        env:
-          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_CI_API_KEY }}
       - name: Enable KVM access
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

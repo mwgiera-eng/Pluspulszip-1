@@ -13,6 +13,14 @@ const visualGate = fs.readFileSync(path.join(root, "scripts", "map-smoke-tools.p
 test("push CI executes a real API 36 native map smoke", () => {
   assert.match(ci, /Native map emulator smoke/);
   assert.match(ci, /GOOGLE_MAPS_ANDROID_CI_API_KEY/);
+  assert.match(ci, /Print CI signing certificate fingerprint/);
+  assert.match(ci, /Require the CI Maps key after printing its signing fingerprint/);
+  assert.ok(
+    ci.indexOf("Print CI signing certificate fingerprint") <
+      ci.indexOf("Require the CI Maps key after printing its signing fingerprint"),
+    "the first keyless run must expose the stable CI signing SHA-1 before it fails closed",
+  );
+  assert.match(ci, /package pl\.pluspuls\.app and the SHA-1 printed/);
   assert.match(ci, /api-level: 36/);
   assert.match(ci, /EXPO_PUBLIC_MAP_TEST_MODE: "true"/);
   assert.match(ci, /android-map-smoke\.sh/);
