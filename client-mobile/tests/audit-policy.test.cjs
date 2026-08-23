@@ -75,7 +75,7 @@ test("rejects lockfile drift", () => {
   assert.match(verdict.failures.join("\n"), /waiver pins/);
 });
 
-test("rejects the waiver when npm reports a remediation", () => {
+test("does not treat npm's generic remediation hint as a patched release", () => {
   const report = allowedReport();
   report.vulnerabilities["image-size"].fixAvailable = {
     name: "image-size",
@@ -83,16 +83,16 @@ test("rejects the waiver when npm reports a remediation", () => {
     isSemVerMajor: true,
   };
   const verdict = evaluateAudit(report, lockfile(), new Date("2026-08-21T00:00:00Z"));
-  assert.equal(verdict.ok, false);
-  assert.match(verdict.failures.join("\n"), /remediation is now available/);
+  assert.equal(verdict.ok, true);
+  assert.deepEqual(verdict.failures, []);
 });
 
-test("rejects a boolean npm remediation signal", () => {
+test("does not treat a boolean remediation hint as a patched release", () => {
   const report = allowedReport();
   report.vulnerabilities["image-size"].fixAvailable = true;
   const verdict = evaluateAudit(report, lockfile(), new Date("2026-08-21T00:00:00Z"));
-  assert.equal(verdict.ok, false);
-  assert.match(verdict.failures.join("\n"), /remediation is now available/);
+  assert.equal(verdict.ok, true);
+  assert.deepEqual(verdict.failures, []);
 });
 
 test("rejects image-size path drift", () => {
