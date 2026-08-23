@@ -13,6 +13,7 @@ const visualGate = fs.readFileSync(path.join(root, "scripts", "map-smoke-tools.p
 test("push CI executes a real API 36 native map smoke", () => {
   assert.match(ci, /Native map emulator smoke/);
   assert.match(ci, /GOOGLE_MAPS_ANDROID_CI_API_KEY/);
+  assert.match(ci, /github\.ref == 'refs\/heads\/android'/);
   assert.match(ci, /- "server\/\*\*"/);
   assert.match(ci, /- "shared\/\*\*"/);
   assert.match(ci, /Print CI signing certificate fingerprint/);

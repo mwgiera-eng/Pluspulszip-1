@@ -14,18 +14,27 @@ export function useLiveHeat(hoursAhead: number, minutesAhead = 0) {
       setData(next);
       setError(null);
     } catch (reason) {
-      if (reason instanceof Error && reason.name === "AbortError") return;
+      if (signal?.aborted || (reason instanceof Error && reason.name === "AbortError")) return;
       setError(reason instanceof Error ? reason.message : "Map data is unavailable");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [hoursAhead, minutesAhead]);
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    void refresh(controller.signal);
-    const interval = setInterval(() => void refresh(), 30_000);
+    let inFlight = false;
+    const poll = async () => {
+      if (inFlight || controller.signal.aborted) return;
+      inFlight = true;
+      try {
+        await refresh(controller.signal);
+      } finally {
+        inFlight = false;
+      }
+    };
+    void poll();
+    const interval = setInterval(() => void poll(), 30_000);
     return () => {
       controller.abort();
       clearInterval(interval);

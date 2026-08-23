@@ -35,6 +35,11 @@ const KRAKOW_REGION = {
   longitudeDelta: 0.22,
 };
 
+// onMapReady means the native map view is initialized. onMapLoaded reports
+// completion of map loading; neither callback is an authentication diagnostic.
+// Never leave the user behind an infinite loader when the latter does not fire.
+const MAP_TILE_TIMEOUT_MS = 20_000;
+
 const TIME_OPTIONS = [
   { label: "Live", hours: 0, minutes: 0 },
   { label: "+30m", hours: 0, minutes: 30 },
@@ -124,9 +129,12 @@ export function MapExperience({
   refreshToken = 0,
 }: Props) {
   const mapRef = useRef<MapView | null>(null);
+  const latestPosition = useRef(position);
   const fittedRouteKey = useRef("");
   const zoomTestPhase = useRef<"idle" | "zoom-in" | "zoom-out" | "passed">("idle");
+  const [nativeMapReady, setNativeMapReady] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [mapTimedOut, setMapTimedOut] = useState(false);
   const [zoomTestStage, setZoomTestStage] = useState<"waiting" | "initial" | "zoom-in" | "zoom-out" | "passed">("waiting");
   const [zoomTestPassed, setZoomTestPassed] = useState(false);
   const [roads, setRoads] = useState<ReturnType<typeof sanitizeRoads>>([]);
@@ -135,6 +143,34 @@ export function MapExperience({
   const [routeError, setRouteError] = useState<string | null>(null);
   const [layers, setLayers] = useState<Record<LayerId, boolean>>({ heat: true, traffic: true, routes: true });
   const mapTestMode = process.env.EXPO_PUBLIC_MAP_TEST_MODE === "true";
+  const hasPosition = position !== null;
+
+  useEffect(() => {
+    latestPosition.current = position;
+  }, [position]);
+
+  useEffect(() => {
+    fittedRouteKey.current = "";
+    setNativeMapReady(false);
+    setMapReady(false);
+    setMapTimedOut(false);
+  }, [refreshToken]);
+
+  useEffect(() => {
+    if (mapReady) return;
+    const timeout = setTimeout(() => setMapTimedOut(true), MAP_TILE_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [mapReady, refreshToken]);
+
+  const handleMapReady = useCallback(() => {
+    setNativeMapReady(true);
+  }, []);
+
+  const handleMapLoaded = useCallback(() => {
+    setNativeMapReady(true);
+    setMapReady(true);
+    setMapTimedOut(false);
+  }, []);
 
   const heatCells = useMemo(() => sanitizeHeatCells(cells, 500), [cells]);
   const heatPolygons = useMemo(() => heatCells.map((cell) => {
@@ -186,32 +222,22 @@ export function MapExperience({
 
   useEffect(() => {
     const controller = new AbortController();
+    let inFlight = false;
     const load = async () => {
-      const [trafficResult, routeResult] = await Promise.allSettled([
-        fetchRoadTraffic(controller.signal),
-        fetchRouteGeometries(position, controller.signal),
-      ]);
-
-      if (trafficResult.status === "fulfilled") {
-        const nextRoads = sanitizeRoads(trafficResult.value.roads, 180);
+      if (inFlight || controller.signal.aborted) return;
+      inFlight = true;
+      try {
+        const result = await fetchRoadTraffic(controller.signal);
+        if (controller.signal.aborted) return;
+        const nextRoads = sanitizeRoads(result.roads, 180);
         setRoads(nextRoads);
         setTrafficError(nextRoads.length ? null : "Brak prawidłowej geometrii ruchu");
-      } else if (!(trafficResult.reason instanceof Error && trafficResult.reason.name === "AbortError")) {
-        setTrafficError("Ruch drogowy jest chwilowo niedostępny");
-      }
-
-      if (routeResult.status === "fulfilled") {
-        const nextRoutes = sanitizeRoutes(routeResult.value, 12);
-        setRoutes(nextRoutes);
-        if (nextRoutes.length === 0) {
-          setRouteError("Brak prawidłowej geometrii tras");
-        } else if (position && !nextRoutes.some((route) => route.role === "drive_to_pickup")) {
-          setRouteError("Trasa GPS jest chwilowo niedostępna — pokazujemy pozostałe trasy");
-        } else {
-          setRouteError(null);
+      } catch {
+        if (!controller.signal.aborted) {
+          setTrafficError("Ruch drogowy jest chwilowo niedostępny");
         }
-      } else if (!(routeResult.reason instanceof Error && routeResult.reason.name === "AbortError")) {
-        setRouteError("Trasy są chwilowo niedostępne");
+      } finally {
+        inFlight = false;
       }
     };
 
@@ -221,10 +247,46 @@ export function MapExperience({
       controller.abort();
       clearInterval(interval);
     };
-  }, [position?.lat, position?.lng, refreshToken]);
+  }, [refreshToken]);
 
   useEffect(() => {
-    if (!mapReady || routes.length === 0 || (mapTestMode && !zoomTestPassed)) return;
+    const controller = new AbortController();
+    let inFlight = false;
+    const load = async () => {
+      if (inFlight || controller.signal.aborted) return;
+      inFlight = true;
+      const routePosition = latestPosition.current;
+      try {
+        const result = await fetchRouteGeometries(routePosition, controller.signal);
+        if (controller.signal.aborted) return;
+        const nextRoutes = sanitizeRoutes(result, 12);
+        setRoutes(nextRoutes);
+        if (nextRoutes.length === 0) {
+          setRouteError("Brak prawidłowej geometrii tras");
+        } else if (routePosition && !nextRoutes.some((route) => route.role === "drive_to_pickup")) {
+          setRouteError("Trasa GPS jest chwilowo niedostępna — pokazujemy pozostałe trasy");
+        } else {
+          setRouteError(null);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setRouteError("Trasy są chwilowo niedostępne");
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void load();
+    const interval = setInterval(() => void load(), 60_000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [hasPosition, refreshToken]);
+
+  useEffect(() => {
+    if (!nativeMapReady || routes.length === 0 || (mapTestMode && !zoomTestPassed)) return;
     if (!focusRoute) return;
     // Route IDs change when the recommendation changes. Live GPS updates must not
     // repeatedly steal the driver's zoom/pan by re-fitting the same route.
@@ -239,7 +301,7 @@ export function MapExperience({
         edgePadding: { top: 150, right: 36, bottom: 150, left: 36 },
       });
     });
-  }, [focusRoute, mapReady, mapTestMode, position, zoomTestPassed]);
+  }, [focusRoute, mapTestMode, nativeMapReady, position, zoomTestPassed]);
 
   useEffect(() => {
     if (
@@ -309,13 +371,14 @@ export function MapExperience({
   return (
     <View style={styles.shell} testID="native-demand-map">
       <MapView
+        key={`google-demand-map-${refreshToken}`}
         ref={mapRef}
         provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
         style={StyleSheet.absoluteFill}
         initialRegion={KRAKOW_REGION}
         customMapStyle={HIGH_CONTRAST_MAP_STYLE}
         mapType="standard"
-        loadingEnabled
+        loadingEnabled={!mapReady && !mapTimedOut}
         loadingBackgroundColor="#E7EBF0"
         loadingIndicatorColor="#00A86B"
         showsUserLocation={Boolean(position)}
@@ -327,17 +390,18 @@ export function MapExperience({
         toolbarEnabled={false}
         minZoomLevel={9}
         maxZoomLevel={19}
-        onMapLoaded={() => setMapReady(true)}
+        onMapReady={handleMapReady}
+        onMapLoaded={handleMapLoaded}
         onRegionChangeComplete={handleRegionChangeComplete}
         accessibilityLabel="Natywna mapa popytu, ruchu i tras PlusPuls"
         testID="google-demand-map"
       >
-        {layers.heat ? heatPolygons : null}
-        {layers.traffic ? roadLines : null}
-        {layers.traffic ? <TrafficSignals roads={roadOverlays} /> : null}
-        {layers.routes ? routeLines : null}
+        {nativeMapReady && layers.heat ? heatPolygons : null}
+        {nativeMapReady && layers.traffic ? roadLines : null}
+        {nativeMapReady && layers.traffic ? <TrafficSignals roads={roadOverlays} /> : null}
+        {nativeMapReady && layers.routes ? routeLines : null}
 
-        {position ? (
+        {nativeMapReady && position ? (
           <Circle center={{ latitude: position.lat, longitude: position.lng }} radius={Math.max(15, Math.min(position.accuracy, 500))} fillColor="rgba(37,99,235,0.12)" strokeColor="rgba(37,99,235,0.65)" strokeWidth={2} zIndex={50} />
         ) : null}
       </MapView>
@@ -372,10 +436,11 @@ export function MapExperience({
       </View>
 
       <View pointerEvents="none" style={styles.statusPanel} testID="map-render-status">
-        {!mapReady ? <ActivityIndicator size="small" color="#00A86B" /> : null}
+        {!mapReady && !mapTimedOut ? <ActivityIndicator size="small" color="#00A86B" /> : null}
         <Text style={styles.statusText}>
-          {mapReady ? "Mapa gotowa" : "Ładowanie mapy"} · {heatCells.length} heat · {roads.length} dróg · {routes.length} tras{mapTestMode ? ` · map test ${zoomTestStage}${zoomTestPassed ? " · zoom test OK" : ""} · ${position ? "GPS active" : "GPS missing"} · ${focusRoute?.role ?? "no route"}` : ""}
+          {mapReady ? "Mapa gotowa" : mapTimedOut ? "Nie potwierdzono mapy bazowej" : nativeMapReady ? "Pobieranie mapy bazowej" : "Uruchamianie Google Maps"} · {heatCells.length} heat · {roads.length} dróg · {routes.length} tras{mapTestMode ? ` · map test ${zoomTestStage}${zoomTestPassed ? " · zoom test OK" : ""} · ${position ? "GPS active" : "GPS missing"} · ${focusRoute?.role ?? "no route"}` : ""}
         </Text>
+        {mapTimedOut ? <Text style={styles.errorText}>Nie otrzymaliśmy zdarzenia zakończenia ładowania Google. Warstwy PlusPuls pozostają dostępne; odśwież mapę lub sprawdź połączenie.</Text> : null}
         {errors ? <Text style={styles.errorText} numberOfLines={2}>{errors}</Text> : null}
       </View>
     </View>

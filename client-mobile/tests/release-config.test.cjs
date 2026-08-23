@@ -9,6 +9,7 @@ const packageLock = require(path.join(root, "package-lock.json"));
 const appJson = require(path.join(root, "app.json"));
 const easJson = require(path.join(root, "eas.json"));
 const configureApp = require(path.join(root, "app.config.js"));
+const mapsReleaseGuide = fs.readFileSync(path.join(root, "docs", "maps-android.md"), "utf8");
 
 test("release version and native map dependency are locked", () => {
   assert.equal(packageJson.version, appJson.expo.version);
@@ -106,6 +107,17 @@ test("Google Maps key is injected only through build environment", () => {
   }
   const committedConfig = fs.readFileSync(path.join(root, "app.json"), "utf8") + fs.readFileSync(path.join(root, "eas.json"), "utf8");
   assert.doesNotMatch(committedConfig, /AIza[0-9A-Za-z_-]{20,}/);
+});
+
+test("Play quantum-ready signing registers every production signer with Maps", () => {
+  assert.match(mapsReleaseGuide, /three distinct app-signing SHA-1 fingerprints/i);
+  assert.match(mapsReleaseGuide, /legacy classical/i);
+  assert.match(mapsReleaseGuide, /hybrid classical/i);
+  assert.match(mapsReleaseGuide, /PQC ML-DSA/i);
+  assert.match(mapsReleaseGuide, /maps-android-backend\.googleapis\.com/);
+  assert.equal((mapsReleaseGuide.match(/--allowed-application=/g) ?? []).length, 3);
+  assert.match(mapsReleaseGuide, /Cloud Shell cannot functionally authenticate Maps SDK for Android/i);
+  assert.match(mapsReleaseGuide, /empty Metrics graph only means/i);
 });
 
 test("production profile creates an auto-incremented Play bundle", () => {

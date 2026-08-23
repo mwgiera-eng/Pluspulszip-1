@@ -26,7 +26,14 @@ test("native geographic layers and GPS route fitting are wired", () => {
 });
 
 test("zoom stability and visible route-bound signals are regression-gated", () => {
+  assert.match(source, /onMapReady/);
   assert.match(source, /onMapLoaded/);
+  assert.match(source, /MAP_TILE_TIMEOUT_MS/);
+  assert.match(source, /mapTimedOut/);
+  assert.match(source, /key=\{`google-demand-map-\$\{refreshToken\}`\}/);
+  assert.match(source, /Nie potwierdzono mapy bazowej/);
+  assert.match(source, /nativeMapReady && layers\.heat/);
+  assert.doesNotMatch(source, /accepted the app identity|Mapa bazowa niedostępna/);
   assert.match(source, /onRegionChangeComplete/);
   assert.match(source, /EXPO_PUBLIC_MAP_TEST_MODE/);
   assert.match(source, /zoom test OK/);
@@ -54,8 +61,13 @@ test("manual refresh retries heat, traffic, and GPS routes and exposes degraded 
   assert.match(screen, /setMapRefreshToken/);
   assert.match(screen, /refreshToken=\{mapRefreshToken\}/);
   assert.match(source, /refreshToken = 0/);
-  assert.match(source, /position\?\.lat, position\?\.lng, refreshToken/);
+  assert.match(source, /\[hasPosition, refreshToken\]/);
+  assert.match(source, /controller\.signal\.aborted/);
+  assert.doesNotMatch(source, /Promise\.allSettled/);
+  assert.match(source, /setMapReady\(false\)/);
   assert.match(source, /!nextRoutes\.some\(\(route\) => route\.role === "drive_to_pickup"\)/);
   assert.match(source, /Trasa GPS jest chwilowo niedostępna/);
   assert.match(heatHook, /setLoading\(true\)/);
+  assert.match(heatHook, /signal\?\.aborted/);
+  assert.match(heatHook, /controller\.signal\.aborted/);
 });

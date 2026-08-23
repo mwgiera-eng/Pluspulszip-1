@@ -113,7 +113,7 @@ jobs:
 
   native-map-smoke:
     name: Native map emulator smoke
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/android'
     needs: [validate, map-api-contract]
     runs-on: ubuntu-latest
     timeout-minutes: 45

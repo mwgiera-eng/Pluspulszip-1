@@ -7,11 +7,70 @@ The Android map uses `react-native-maps` with Google Maps. Heat cells, traffic s
 1. Enable **Maps SDK for Android** in the release Google Cloud project.
 2. Create separate local-development, CI-emulator, and production API keys.
 3. Restrict each key to **Android apps**.
-4. Add package `pl.pluspuls.app` and the matching SHA-1 certificate fingerprint.
-5. For Play builds, copy the SHA-1 from **Play Console → Setup → App integrity → App signing key certificate**. This can differ from the upload-key SHA-1.
-6. Add API restrictions so the key can call only **Maps SDK for Android**.
+4. Add package `pl.pluspuls.app` and every matching app-signing SHA-1 certificate fingerprint.
+5. For Play builds, copy fingerprints from **Play Console → Protected with Play → Play app signing → App signing key**. Never use the upload-key fingerprint.
+6. New Play apps use quantum-ready hybrid signing. Register all **three distinct app-signing SHA-1 fingerprints** as separate Android application entries with the same package:
+   - legacy classical key used for older Android devices;
+   - hybrid classical key used on Android 17+;
+   - PQC ML-DSA key used on Android 17+.
+7. Add API restrictions so the key can call only **Maps SDK for Android** (`maps-android-backend.googleapis.com`).
+
+Google Play explicitly requires all three fingerprints to be registered with API providers for quantum-ready apps. A single SHA-1 can work in CI or on one Android generation while Play-installed builds on another generation receive a blank map.
+
+Official references:
+
+- https://support.google.com/googleplay/android-developer/answer/9842756?hl=en
+- https://developers.google.com/maps/api-security-best-practices
+- https://docs.cloud.google.com/sdk/gcloud/reference/services/api-keys/update
 
 Never prefix this value with `EXPO_PUBLIC_`; it must not be included in the JavaScript bundle.
+
+## Cloud Shell verification
+
+These commands verify the project, enabled SDK, key resource, and restrictions without printing the key value:
+
+```bash
+PROJECT_ID=trans-aurora-502114-a6
+PACKAGE=pl.pluspuls.app
+gcloud config set project "$PROJECT_ID"
+
+gcloud billing projects describe "$PROJECT_ID"
+gcloud services list --enabled --project="$PROJECT_ID" \
+  --filter='NAME:maps-android-backend.googleapis.com'
+gcloud services api-keys list --project="$PROJECT_ID"
+
+read -rsp "Maps key from the AAB: " MAPS_KEY; echo
+KEY_RESOURCE="$(gcloud services api-keys lookup "$MAPS_KEY" --format='value(name)')"
+unset MAPS_KEY
+gcloud services api-keys describe "$KEY_RESOURCE" \
+  --format='yaml(displayName,restrictions)'
+```
+
+To repair an existing key, enter all three SHA-1 values from Play Console. `gcloud` expects fingerprints without colons:
+
+```bash
+read -rp "SHA-1 legacy classical: " SHA1_LEGACY
+read -rp "SHA-1 hybrid classical: " SHA1_HYBRID
+read -rp "SHA-1 PQC ML-DSA: " SHA1_PQC
+
+SHA1_LEGACY="${SHA1_LEGACY//:/}"
+SHA1_HYBRID="${SHA1_HYBRID//:/}"
+SHA1_PQC="${SHA1_PQC//:/}"
+
+gcloud services api-keys update "$KEY_RESOURCE" \
+  --api-target=service=maps-android-backend.googleapis.com \
+  --allowed-application="sha1_fingerprint=$SHA1_LEGACY,package_name=$PACKAGE" \
+  --allowed-application="sha1_fingerprint=$SHA1_HYBRID,package_name=$PACKAGE" \
+  --allowed-application="sha1_fingerprint=$SHA1_PQC,package_name=$PACKAGE"
+```
+
+Changing restrictions on the existing key does not require another AAB. Force-stop and reopen the Play-installed app after propagation.
+
+Cloud Shell cannot functionally authenticate Maps SDK for Android because it does not run a Play-signed Android application. There is no supported key-validation HTTP endpoint. An empty Metrics graph only means that no request is shown under the selected project, credential, API, filters, and time window; it is not a key-authentication test. Runtime authorization is verified by the Play-installed app or, when a device is attached, `adb logcat -e "Google Maps Android API"`.
+
+## Key rotation
+
+Use **Rotate key** in Google Cloud or create a second Android-restricted key with the same three application entries and Maps SDK-only API restriction. Put the replacement value in the EAS `production` environment and build a new AAB. Keep the old, still-restricted key active while older installed versions use it; remove it only after migration is complete and its usage has stopped. Unlike a restriction repair, changing the key value always requires a new application build.
 
 ## EAS production secret
 
@@ -28,9 +87,13 @@ Configure the credentials in these exact scopes:
 - GitHub Actions **repository or organization secret** `GOOGLE_MAPS_ANDROID_CI_API_KEY`: Maps SDK for Android key restricted to package `pl.pluspuls.app` and the generated CI debug-certificate SHA-1. The smoke job has no GitHub Environment binding, so an Environment-only secret will resolve empty.
 - GitHub **production Environment secret** `EXPO_TOKEN`: Expo access token used only by the gated AAB workflow, whose `build-aab` job is bound to that Environment.
 
+The CI Maps secret is released only for `refs/heads/android`; a manually dispatched run on any other ref cannot execute the secret-bearing emulator job. Keep `android` protected against unreviewed direct pushes. Configure the GitHub `production` Environment to allow only `android` deployments and require a reviewer. Use a least-privilege Expo robot-user token for `EXPO_TOKEN`, not a personal owner token: https://docs.expo.dev/accounts/programmatic-access/
+
 The production Maps key has one source of truth: the EAS `production` secret created above. It is not copied to GitHub and is never pulled into the candidate-controlled runner. The local EAS submission pass uses a non-working sentinel while resolving dynamic config; the EAS builder evaluates the config again with `EAS_BUILD=true`, receives the production secret, and fails closed if it is absent.
 
 The `Native map emulator smoke` job deliberately generates the native project and reads the SHA-1 directly from its generated debug keystore before checking the secret. On first setup, open the failed job, copy `CI debug SHA-1` from `Print CI signing certificate fingerprint`, create the Android-restricted CI key for `pl.pluspuls.app`, save it as the repository/organization secret `GOOGLE_MAPS_ANDROID_CI_API_KEY`, and rerun the workflow. No placeholder or production key is needed to bootstrap the fingerprint. The emulator gate then installs a release APK on API 36, injects a Kraków GPS fix, and opens `pluspuls://map`. At the settled initial, zoom-in, zoom-out, and real swipe/pan cameras it gates the bare Google tiles for brightness, contrast, coverage, and stability and counts the production heat, road, animated-signal, and route colors. The final state must contain an active GPS-derived `drive_to_pickup` route, and isolated heat, traffic, and route screenshots must add enough of their exact overlay colors. Maps authorization and Android fatal errors also fail the job.
+
+This smoke test proves the native map renderer, overlays, and Render API contract against the CI debug certificate. It cannot prove production authorization by Google Play's three app-signing certificates; that external restriction must be verified separately before each first release or signing-key upgrade.
 
 ## Required release sequence
 
