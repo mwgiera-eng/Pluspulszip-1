@@ -127,37 +127,21 @@ jobs:
       GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_CI_API_KEY }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Detect optional CI Maps key
-        id: maps-key
-        run: |
-          if test -n "$GOOGLE_MAPS_ANDROID_API_KEY"; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Native map smoke skipped: GOOGLE_MAPS_ANDROID_CI_API_KEY is not configured. Production EAS credentials are not used by this debug-signed emulator job."
-          fi
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        if: steps.maps-key.outputs.available == 'true'
         with:
           node-version: 22.13.1
           cache: npm
           cache-dependency-path: client-mobile/package-lock.json
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
-        if: steps.maps-key.outputs.available == 'true'
         with:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-        if: steps.maps-key.outputs.available == 'true'
-      - if: steps.maps-key.outputs.available == 'true'
-        run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts
       - name: Generate native Android project
-        if: steps.maps-key.outputs.available == 'true'
         run: npx expo prebuild --platform android --clean --no-install
-      - if: steps.maps-key.outputs.available == 'true'
-        run: chmod +x android/gradlew scripts/android-map-smoke.sh
+      - run: chmod +x android/gradlew scripts/android-map-smoke.sh
       - name: Print CI signing certificate fingerprint
-        if: steps.maps-key.outputs.available == 'true'
         run: |
           fingerprint="$(keytool -list -v \
             -keystore android/app/debug.keystore \
@@ -170,17 +154,20 @@ jobs:
             exit 1
           fi
           echo "CI debug SHA-1: $fingerprint"
+      - name: Require the CI Maps key after printing its signing fingerprint
+        run: |
+          if test -z "$GOOGLE_MAPS_ANDROID_API_KEY"; then
+            echo "::error::Missing GOOGLE_MAPS_ANDROID_CI_API_KEY. Create a Maps SDK for Android key restricted to package pl.pluspuls.app and the CI debug SHA-1 printed by the previous step, then add it as a GitHub Actions secret and rerun this workflow."
+            exit 1
+          fi
       - name: Build emulator release APK
-        if: steps.maps-key.outputs.available == 'true'
         run: ./android/gradlew :app:assembleRelease -x lint -x test --no-daemon -PreactNativeArchitectures=x86_64
       - name: Enable KVM access
-        if: steps.maps-key.outputs.available == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Exercise map tiles, overlays, GPS route, and zoom
-        if: steps.maps-key.outputs.available == 'true'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 36
@@ -191,7 +178,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: cd client-mobile && bash scripts/android-map-smoke.sh
       - name: Upload map smoke evidence
-        if: always() && steps.maps-key.outputs.available == 'true'
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: native-map-smoke-${{ github.sha }}
