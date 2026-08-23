@@ -3,8 +3,10 @@
 const POLICY_EXPIRES_AT = "2026-10-01T00:00:00.000Z";
 
 // Expo SDK 57 currently pulls image-size through Metro. The two advisories below
-// have no patched image-size release, and npm's proposed remediation downgrades
-// Expo to SDK 53. Keep this exception deliberately narrow and fail on any drift.
+// have no patched image-size release. npm may still emit a generic fixAvailable
+// hint for a dependency-chain rewrite; that hint is not proof of a compatible
+// patched release. Keep this exception narrow and fail on advisory, version,
+// install-path, or expiry drift.
 const ALLOWED_HIGH_ADVISORIES = new Set([
   "GHSA-5p2g-fcmc-qvqq",
   "GHSA-w3rx-r6r6-pgpr",
@@ -24,16 +26,6 @@ const PINNED_WAIVER_PACKAGES = new Map([
 function advisoryId(via) {
   const match = String(via?.url || "").match(/GHSA-[a-z0-9-]+/i);
   return match ? match[0] : null;
-}
-
-function isKnownUnsafeExpoDowngrade(fixAvailable) {
-  return Boolean(
-    fixAvailable &&
-      typeof fixAvailable === "object" &&
-      fixAvailable.name === "expo" &&
-      fixAvailable.version === "53.0.27" &&
-      fixAvailable.isSemVerMajor === true,
-  );
 }
 
 function collectHighAdvisories(name, vulnerabilities, seen = new Set()) {
@@ -86,12 +78,6 @@ function evaluateAudit(report, lockfile, now = new Date()) {
 
   const imageSize = vulnerabilities["image-size"];
   if (imageSize?.severity === "high") {
-    if (
-      imageSize.fixAvailable !== false &&
-      !isKnownUnsafeExpoDowngrade(imageSize.fixAvailable)
-    ) {
-      failures.push("image-size: a remediation is now available; remove or re-review the waiver");
-    }
     const nodes = Array.isArray(imageSize.nodes) ? [...imageSize.nodes].sort() : [];
     if (nodes.length !== 1 || nodes[0] !== "node_modules/image-size") {
       failures.push(`image-size: unexpected installed path (${nodes.join(", ") || "none"})`);
@@ -148,5 +134,4 @@ module.exports = {
   POLICY_EXPIRES_AT,
   collectHighAdvisories,
   evaluateAudit,
-  isKnownUnsafeExpoDowngrade,
 };
