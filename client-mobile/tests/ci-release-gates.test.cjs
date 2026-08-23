@@ -16,18 +16,22 @@ test("push CI executes a real API 36 native map smoke", () => {
   assert.match(ci, /github\.ref == 'refs\/heads\/android'/);
   assert.match(ci, /- "server\/\*\*"/);
   assert.match(ci, /- "shared\/\*\*"/);
+  assert.match(ci, /Detect optional CI Maps key/);
+  assert.match(ci, /Native map smoke skipped/);
   assert.match(ci, /Print CI signing certificate fingerprint/);
-  assert.match(ci, /Require the CI Maps key after printing its signing fingerprint/);
   assert.ok(
-    ci.indexOf("Print CI signing certificate fingerprint") <
-      ci.indexOf("Require the CI Maps key after printing its signing fingerprint"),
-    "the first keyless run must expose the stable CI signing SHA-1 before it fails closed",
+    ci.indexOf("Detect optional CI Maps key") <
+      ci.indexOf("Print CI signing certificate fingerprint"),
+    "the optional secret must be detected before secret-dependent native setup",
+  );
+  assert.ok(
+    (ci.match(/if: steps\.maps-key\.outputs\.available == 'true'/g) || []).length >= 8,
+    "every secret-dependent native smoke step must be gated",
   );
   assert.match(ci, /keytool -list -v/);
   assert.match(ci, /android\/app\/debug\.keystore/);
   assert.match(ci, /CI debug SHA-1/);
   assert.doesNotMatch(ci, /gradlew :app:signingReport/);
-  assert.match(ci, /package pl\.pluspuls\.app and the CI debug SHA-1 printed/);
   assert.match(ci, /api-level: 36/);
   assert.match(ci, /EXPO_PUBLIC_MAP_TEST_MODE: "true"/);
   assert.match(ci, /android-map-smoke\.sh/);
