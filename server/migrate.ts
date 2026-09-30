@@ -18,7 +18,7 @@ async function hasMigrationRun(filename: string) {
     `SELECT 1 FROM "_app_migrations" WHERE "filename" = $1 LIMIT 1`,
     [filename],
   );
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 async function applyMigration(filename: string) {
